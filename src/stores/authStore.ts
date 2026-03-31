@@ -12,6 +12,7 @@ interface AuthStore {
 
   // Actions
   setUser: (user: User) => void;
+  updateUser: (updates: Partial<User>) => void;
   loginAsDemo: () => void;
   logout: () => void;
 }
@@ -22,6 +23,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   isLoading: false,
 
   setUser: (user: User) => set({ user, isAuthenticated: true }),
+
+  updateUser: (updates: Partial<User>) => set((state) => ({
+    user: state.user ? { ...state.user, ...updates } : null
+  })),
 
   loginAsDemo: () => {
     const demoUser: User = {
