@@ -55,7 +55,7 @@ export default function ChatScreen() {
     checkAIStatus();
     loadSessionsList();
     loadChatHistory(null); // Load empty or initialize welcome
-  }, []);
+  }, [user?.id]); // Reload when user changes (login/logout)
 
   const checkAIStatus = async () => {
     const active = await hasApiKey();
