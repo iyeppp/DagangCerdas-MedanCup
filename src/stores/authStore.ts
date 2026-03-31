@@ -1,0 +1,44 @@
+// DagangCerdas — Auth Store (Zustand)
+// Manages user authentication state
+
+import { create } from 'zustand';
+import type { User } from '../types';
+import { DEMO_USER } from '../utils/constants';
+
+interface AuthStore {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+
+  // Actions
+  setUser: (user: User) => void;
+  loginAsDemo: () => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+
+  setUser: (user: User) => set({ user, isAuthenticated: true }),
+
+  loginAsDemo: () => {
+    const demoUser: User = {
+      id: DEMO_USER.id,
+      name: DEMO_USER.name,
+      email: DEMO_USER.email,
+      businessName: DEMO_USER.businessName,
+      businessType: DEMO_USER.businessType,
+      phone: DEMO_USER.phone,
+      latitude: DEMO_USER.latitude,
+      longitude: DEMO_USER.longitude,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      syncedAt: null,
+    };
+    set({ user: demoUser, isAuthenticated: true });
+  },
+
+  logout: () => set({ user: null, isAuthenticated: false }),
+}));

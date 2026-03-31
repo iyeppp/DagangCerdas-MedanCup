@@ -1,35 +1,125 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+// DagangCerdas — Tab Layout
+// 5-tab navigation: Dashboard, POS, Stok, Belanja Kolektif, Profil
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, Platform } from 'react-native';
+import { colors } from '../../src/theme';
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+interface TabIconProps {
+  name: IoniconsName;
+  color: string;
+  focused: boolean;
+}
+
+function TabIcon({ name, color, focused }: TabIconProps) {
+  return (
+    <View style={[styles.iconContainer, focused && styles.iconContainerActive]}>
+      <Ionicons name={name} size={22} color={color} />
+      {focused && <View style={styles.activeIndicator} />}
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: colors.primary[600],
+        tabBarInactiveTintColor: colors.neutral[400],
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Beranda',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="pos"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Kasir',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={focused ? 'cart' : 'cart-outline'} color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="inventory"
+        options={{
+          title: 'Stok',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={focused ? 'cube' : 'cube-outline'} color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="group-buying"
+        options={{
+          title: 'Kolektif',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={focused ? 'people' : 'people-outline'} color={color} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profil',
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={focused ? 'person' : 'person-outline'} color={color} focused={focused} />
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 0,
+    elevation: 12,
+    shadowColor: '#1E2533',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    height: Platform.OS === 'android' ? 64 : 84,
+    paddingBottom: Platform.OS === 'android' ? 8 : 28,
+    paddingTop: 8,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  tabItem: {
+    paddingTop: 4,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 28,
+  },
+  iconContainerActive: {
+    transform: [{ scale: 1.05 }],
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.primary[500],
+  },
+});

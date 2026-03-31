@@ -1,98 +1,587 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// DagangCerdas — Dashboard (Beranda)
+// Visualisasi KPI, grafik tren, AI suggestion, quick actions
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
+  Dimensions,
+  Animated,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { LineChart } from 'react-native-chart-kit';
+import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
+import { formatRupiah, formatShortNumber, formatPercent, formatDate } from '../../src/utils/formatters';
+import { useAuthStore } from '../../src/stores/authStore';
+import { getTodaySales, getSalesSummary, getLowStockProducts } from '../../src/services/database/repository';
+import { useCountAnimation, FadeInView, ScalePressable, usePulse } from '../../src/components/animations';
+import type { SalesSummary, Product } from '../../src/types';
 
-export default function HomeScreen() {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+export default function DashboardScreen() {
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [todaySales, setTodaySales] = useState({ revenue: 0, profit: 0, count: 0 });
+  const [summary, setSummary] = useState<SalesSummary | null>(null);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [greeting, setGreeting] = useState('');
+  const { user } = useAuthStore();
+
+  const loadData = useCallback(async () => {
+    try {
+      const userId = user?.id || '';
+      if (!userId) return;
+      const [today, salesSummary, lowStock] = await Promise.all([
+        getTodaySales(userId),
+        getSalesSummary(userId, 7),
+        getLowStockProducts(userId),
+      ]);
+      setTodaySales(today);
+      setSummary(salesSummary);
+      setLowStockProducts(lowStock);
+    } catch (error) {
+      console.error('[Dashboard] Load error:', error);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      // Set greeting based on time
+      const hour = new Date().getHours();
+      if (hour < 12) setGreeting('Selamat Pagi');
+      else if (hour < 15) setGreeting('Selamat Siang');
+      else if (hour < 18) setGreeting('Selamat Sore');
+      else setGreeting('Selamat Malam');
+    }, [loadData, user?.id])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  // Chart data
+  const chartData = {
+    labels: summary?.dailyTrend.map(d => {
+      const parts = d.date?.split('-');
+      return parts ? `${parts[2]}/${parts[1]}` : '';
+    }) || ['', '', '', '', '', '', ''],
+    datasets: [{
+      data: summary?.dailyTrend.map(d => d.totalAmount) || [0, 0, 0, 0, 0, 0, 0],
+      color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+      strokeWidth: 3,
+    }],
+  };
+
+  // Ensure chart always has data points
+  if (chartData.datasets[0].data.length === 0) {
+    chartData.labels = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    chartData.datasets[0].data = [0, 0, 0, 0, 0, 0, 0];
+  }
+
+  // AI suggestion based on data
+  const aiSuggestion = lowStockProducts.length > 0
+    ? `⚠️ ${lowStockProducts.length} produk stok rendah! "${lowStockProducts[0]?.name}" hanya tersisa ${lowStockProducts[0]?.stock} ${lowStockProducts[0]?.unit}. Pertimbangkan untuk restok via Belanja Kolektif.`
+    : todaySales.count > 0
+      ? `📊 Hari ini sudah ${todaySales.count} transaksi dengan omzet ${formatRupiah(todaySales.revenue)}. Pertahankan momentum ini!`
+      : '💡 Belum ada transaksi hari ini. Mulai catat penjualan di menu Kasir untuk mendapatkan insight bisnis dari AI.';
+
+  // Animated KPI values
+  const animatedRevenue = useCountAnimation(todaySales.revenue, 1500, 300);
+  const animatedProfit = useCountAnimation(todaySales.profit, 1500, 500);
+  const animatedCount = useCountAnimation(todaySales.count, 800, 700);
+  const pulseAnim = usePulse(0.97, 1.03);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary[500]]} />}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <LinearGradient
+        colors={[colors.primary[600], colors.primary[800]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{greeting} 👋</Text>
+            <Text style={styles.businessName}>{user?.businessName || user?.name || 'Toko UMKM'}</Text>
+            <Text style={styles.dateText}>{formatDate(Date.now(), 'long')}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.notifButton}
+            onPress={() => router.push('/chat')}
+          >
+            <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
+            <View style={styles.notifBadge}>
+              <Text style={styles.notifBadgeText}>AI</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Today KPI Summary */}
+        <View style={styles.kpiRow}>
+          <View style={styles.kpiItem}>
+            <Text style={styles.kpiValue}>{formatRupiah(animatedRevenue)}</Text>
+            <Text style={styles.kpiLabel}>Omzet Hari Ini</Text>
+          </View>
+          <View style={styles.kpiDivider} />
+          <View style={styles.kpiItem}>
+            <Text style={styles.kpiValue}>{formatRupiah(animatedProfit)}</Text>
+            <Text style={styles.kpiLabel}>Estimasi Profit</Text>
+          </View>
+          <View style={styles.kpiDivider} />
+          <View style={styles.kpiItem}>
+            <Text style={styles.kpiValue}>{animatedCount}</Text>
+            <Text style={styles.kpiLabel}>Transaksi</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* AI Suggestion Bar */}
+      <FadeInView delay={200}>
+        <ScalePressable onPress={() => router.push('/ai-mentor')} style={styles.aiSuggestionBar}>
+          <View style={styles.aiIconContainer}>
+            <Animated.View style={pulseAnim}>
+              <Ionicons name="sparkles" size={18} color={colors.primary[600]} />
+            </Animated.View>
+          </View>
+          <View style={styles.aiSuggestionContent}>
+            <Text style={styles.aiSuggestionTitle}>Saran AI Cerdas</Text>
+            <Text style={styles.aiSuggestionText} numberOfLines={2}>{aiSuggestion}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.neutral[400]} />
+        </ScalePressable>
+      </FadeInView>
+
+      {/* Quick Actions */}
+      <FadeInView delay={400} style={styles.section}>
+        <Text style={styles.sectionTitle}>Aksi Cepat</Text>
+        <View style={styles.quickActions}>
+          {[
+            { icon: 'cart', label: 'Kasir', color: colors.primary[500], route: '/(tabs)/pos' },
+            { icon: 'cube', label: 'Stok', color: colors.accent[500], route: '/(tabs)/inventory' },
+            { icon: 'chatbubble-ellipses', label: 'AI Chat', color: '#9C27B0', route: '/chat' },
+            { icon: 'people', label: 'Kolektif', color: colors.warning, route: '/(tabs)/group-buying' },
+          ].map((action, index) => (
+            <ScalePressable
+              key={index}
+              onPress={() => router.push(action.route as any)}
+              scaleValue={0.9}
+            >
+              <View style={styles.quickActionItem}>
+                <View style={[styles.quickActionIcon, { backgroundColor: action.color + '15' }]}>
+                  <Ionicons name={action.icon as any} size={24} color={action.color} />
+                </View>
+                <Text style={styles.quickActionLabel}>{action.label}</Text>
+              </View>
+            </ScalePressable>
+          ))}
+        </View>
+      </FadeInView>
+
+      {/* Sales Chart */}
+      <FadeInView delay={600} style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tren Penjualan 7 Hari</Text>
+          <Text style={styles.sectionSubtitle}>
+            Total: {formatRupiah(summary?.totalRevenue || 0)}
+          </Text>
+        </View>
+        <View style={styles.chartContainer}>
+          <LineChart
+            data={chartData}
+            width={SCREEN_WIDTH - 48}
+            height={200}
+            chartConfig={{
+              backgroundColor: '#FFFFFF',
+              backgroundGradientFrom: '#FFFFFF',
+              backgroundGradientTo: '#FFFFFF',
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(86, 94, 108, ${opacity})`,
+              propsForDots: {
+                r: '5',
+                strokeWidth: '2',
+                stroke: colors.primary[500],
+              },
+              propsForBackgroundLines: {
+                strokeDasharray: '5,5',
+                stroke: colors.neutral[200],
+              },
+              formatYLabel: (value) => formatShortNumber(Number(value)),
+            }}
+            bezier
+            style={styles.chart}
+            withInnerLines={true}
+            withOuterLines={false}
+            withVerticalLabels={true}
+            withHorizontalLabels={true}
+            fromZero
+          />
+        </View>
+      </FadeInView>
+
+      {/* Weekly Summary Cards */}
+      <FadeInView delay={800} style={styles.section}>
+        <Text style={styles.sectionTitle}>Ringkasan Minggu Ini</Text>
+        <View style={styles.summaryGrid}>
+          <View style={[styles.summaryCard, { borderLeftColor: colors.primary[500] }]}>
+            <Ionicons name="wallet-outline" size={24} color={colors.primary[500]} />
+            <Text style={styles.summaryValue}>{formatRupiah(summary?.totalRevenue || 0)}</Text>
+            <Text style={styles.summaryLabel}>Total Omzet</Text>
+          </View>
+          <View style={[styles.summaryCard, { borderLeftColor: colors.success }]}>
+            <Ionicons name="trending-up-outline" size={24} color={colors.success} />
+            <Text style={styles.summaryValue}>{formatRupiah(summary?.totalProfit || 0)}</Text>
+            <Text style={styles.summaryLabel}>Total Profit</Text>
+          </View>
+          <View style={[styles.summaryCard, { borderLeftColor: colors.accent[500] }]}>
+            <Ionicons name="receipt-outline" size={24} color={colors.accent[500]} />
+            <Text style={styles.summaryValue}>{summary?.totalTransactions || 0}</Text>
+            <Text style={styles.summaryLabel}>Transaksi</Text>
+          </View>
+          <View style={[styles.summaryCard, { borderLeftColor: colors.warning }]}>
+            <Ionicons name="calculator-outline" size={24} color={colors.warning} />
+            <Text style={styles.summaryValue}>{formatRupiah(summary?.averagePerTransaction || 0)}</Text>
+            <Text style={styles.summaryLabel}>Rata-rata/Trx</Text>
+          </View>
+        </View>
+      </FadeInView>
+
+      {/* Top Products */}
+      {summary?.topProducts && summary.topProducts.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Produk Terlaris</Text>
+          {summary.topProducts.map((product, index) => (
+            <View key={index} style={styles.topProductItem}>
+              <View style={styles.topProductRank}>
+                <Text style={styles.topProductRankText}>{index + 1}</Text>
+              </View>
+              <View style={styles.topProductInfo}>
+                <Text style={styles.topProductName}>{product.name}</Text>
+                <Text style={styles.topProductQty}>{product.quantity} terjual</Text>
+              </View>
+              <Text style={styles.topProductRevenue}>{formatRupiah(product.revenue)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Low Stock Alert */}
+      {lowStockProducts.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.error }]}>⚠️ Stok Rendah</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/inventory')}>
+              <Text style={styles.seeAllText}>Lihat Semua</Text>
+            </TouchableOpacity>
+          </View>
+          {lowStockProducts.slice(0, 3).map((product, index) => (
+            <View key={index} style={styles.lowStockItem}>
+              <View style={styles.lowStockIcon}>
+                <Ionicons name="alert-circle" size={20} color={colors.error} />
+              </View>
+              <View style={styles.lowStockInfo}>
+                <Text style={styles.lowStockName}>{product.name}</Text>
+                <Text style={styles.lowStockQty}>
+                  Sisa: {product.stock} {product.unit} (min: {product.minStock})
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={{ height: 32 }} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  content: {
+    paddingBottom: 100,
+  },
+
+  // Header
+  header: {
+    paddingTop: 56,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing['2xl'],
+    borderBottomLeftRadius: borderRadius['2xl'],
+    borderBottomRightRadius: borderRadius['2xl'],
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xl,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  greeting: {
+    ...typography.body,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 2,
+  },
+  businessName: {
+    ...typography.h3,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  dateText: {
+    ...typography.bodySm,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  notifButton: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.lg,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF5722',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  notifBadgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // KPI Row
+  kpiRow: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  kpiItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  kpiValue: {
+    ...typography.label,
+    color: '#FFFFFF',
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  kpiLabel: {
+    ...typography.caption,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  kpiDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginVertical: 4,
+  },
+
+  // AI Suggestion
+  aiSuggestionBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: spacing.lg,
+    marginTop: -spacing.lg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...shadows.md,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  aiIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  aiSuggestionContent: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  aiSuggestionTitle: {
+    ...typography.labelSm,
+    color: colors.primary[600],
+    marginBottom: 2,
+  },
+  aiSuggestionText: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    lineHeight: 16,
+  },
+
+  // Section
+  section: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  sectionSubtitle: {
+    ...typography.bodySm,
+    color: colors.text.secondary,
+  },
+  seeAllText: {
+    ...typography.labelSm,
+    color: colors.primary[500],
+  },
+
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  quickActionItem: {
+    alignItems: 'center',
+    width: (SCREEN_WIDTH - 48) / 4 - 8,
+  },
+  quickActionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  quickActionLabel: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+
+  // Chart
+  chartContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  chart: {
+    borderRadius: borderRadius.md,
+    marginLeft: -spacing.md,
+  },
+
+  // Summary Grid
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  summaryCard: {
+    width: (SCREEN_WIDTH - 48 - 12) / 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderLeftWidth: 3,
+    ...shadows.sm,
+  },
+  summaryValue: {
+    ...typography.label,
+    color: colors.text.primary,
+    marginTop: spacing.sm,
+    marginBottom: 2,
+  },
+  summaryLabel: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
+
+  // Top Products
+  topProductItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  topProductRank: {
+    width: 28,
+    height: 28,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  topProductRankText: {
+    ...typography.labelSm,
+    color: colors.primary[600],
+  },
+  topProductInfo: {
+    flex: 1,
+  },
+  topProductName: {
+    ...typography.label,
+    color: colors.text.primary,
+  },
+  topProductQty: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
+  topProductRevenue: {
+    ...typography.label,
+    color: colors.success,
+  },
+
+  // Low Stock
+  lowStockItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.errorLight,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  lowStockIcon: {
+    marginRight: spacing.md,
+  },
+  lowStockInfo: {
+    flex: 1,
+  },
+  lowStockName: {
+    ...typography.label,
+    color: colors.text.primary,
+  },
+  lowStockQty: {
+    ...typography.caption,
+    color: colors.error,
   },
 });
