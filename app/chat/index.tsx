@@ -2,20 +2,29 @@
 // Asisten AI berbasis Gemini 2.0 Flash untuk menjawab pertanyaan manajerial
 // Fallback ke respons lokal jika tidak ada API key
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Modal, ScrollView, Alert
-} from 'react-native';
-import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
-import { formatDate } from '../../src/utils/formatters';
-import { useAuthStore } from '../../src/stores/authStore';
-import { saveChatMessage, getChatHistory, createChatSession, getUserChatSessions, deleteChatSession, updateChatSessionTitle } from '../../src/services/database/repository';
-import { chat } from '../../src/services/ai/chatbot';
+import { Stack } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { hasApiKey } from '../../src/services/ai/apiKeyStore';
+import { chat } from '../../src/services/ai/chatbot';
+import { createChatSession, deleteChatSession, getChatHistory, getUserChatSessions, saveChatMessage } from '../../src/services/database/repository';
+import { useAuthStore } from '../../src/stores/authStore';
+import { borderRadius, colors, shadows, spacing, typography } from '../../src/theme';
+import { formatDate } from '../../src/utils/formatters';
 
 interface ChatMessage {
   id: string;
@@ -150,7 +159,7 @@ export default function ChatScreen() {
       conversationHistoryRef.current.push({ role: 'user', content: userText });
 
       // Get AI response (tries OpenAI first, falls back to local)
-      const result = await chat(userText, conversationHistoryRef.current);
+      const result = await chat(userText, conversationHistoryRef.current, user);
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),

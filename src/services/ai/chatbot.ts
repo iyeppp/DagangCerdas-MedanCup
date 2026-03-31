@@ -3,18 +3,24 @@
 // Fallback ke respons lokal jika tidak ada API key
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getSalesSummary, getLowStockProducts, getAllProducts } from '../database/repository';
+import type { User } from '../../types';
+import { AI_CONFIG, DEMO_USER } from '../../utils/constants';
 import { formatRupiah } from '../../utils/formatters';
-import { DEMO_USER, AI_CONFIG } from '../../utils/constants';
+import { getAllProducts, getLowStockProducts, getSalesSummary } from '../database/repository';
 import { getApiKey } from './apiKeyStore';
 
-const SYSTEM_PROMPT = `Kamu adalah "Cerdas", asisten AI bisnis untuk pelaku UMKM di Kota Medan, Indonesia.
+function generateSystemPrompt(user: User | null): string {
+  const userName = user?.name || DEMO_USER.name;
+  const businessName = user?.businessName || DEMO_USER.businessName;
+  const businessType = user?.businessType || DEMO_USER.businessType;
+  
+  return `Kamu adalah "Cerdas", asisten AI bisnis untuk pelaku UMKM di Kota Medan, Indonesia.
 PENTING: DILARANG KERAS menggunakan tanda baca formatting markdown (seperti bintang ganda ** untuk bold) ataupun emoji/simbol apapun di dalam jawabanmu. Balaslah dengan kalimat teks biasa yang rapi dan bersih.
 
 Profil User:
-- Nama: ${DEMO_USER.name}
-- Bisnis: ${DEMO_USER.businessName}
-- Tipe: Warung Makan
+- Nama: ${userName}
+- Bisnis: ${businessName}
+- Tipe: ${businessType}
 - Lokasi: Medan, Sumatera Utara
 
 Tugasmu:
@@ -26,13 +32,13 @@ Tugasmu:
 
 Aturan:
 - Selalu berbicara dalam Bahasa Indonesia yang ramah, hangat, dan mudah dipahami
-- Gunakan emoji secukupnya untuk membuat percakapan terasa friendly
 - Berikan jawaban yang spesifik dan actionable, bukan generik
 - Jika diberi data penjualan, analisis dengan detail
 - Jangan pernah menyarankan hal yang ilegal atau tidak etis
 - Saat diminta rangkuman, gunakan format yang rapi (bullet points, tabel jika perlu)
 - Referensikan lokasi dan konteks Medan jika relevan (KIM, Pasar Petisah, dll)
 - Jawab dengan ringkas tapi informatif (maksimal 300 kata)`;
+}
 
 // ==========================================
 // LOCAL FALLBACK RESPONSES
@@ -71,13 +77,13 @@ function getLocalResponse(message: string): string {
 // BUSINESS CONTEXT BUILDER
 // ==========================================
 
-export async function buildBusinessContext(): Promise<string> {
+export async function buildBusinessContext(userId?: string): Promise<string> {
   try {
-    const userId = DEMO_USER.id;
+    const finalUserId = userId || DEMO_USER.id;
     const [summary, lowStock, products] = await Promise.all([
-      getSalesSummary(userId, 7),
-      getLowStockProducts(userId),
-      getAllProducts(userId),
+      getSalesSummary(finalUserId, 7),
+      getLowStockProducts(finalUserId),
+      getAllProducts(finalUserId),
     ]);
 
     let context = '\n\n--- DATA BISNIS TERKINI ---\n';
@@ -148,7 +154,8 @@ function toGeminiHistory(history: { role: string; content: string }[]) {
  */
 export async function sendToAI(
   userMessage: string,
-  conversationHistory: { role: string; content: string }[]
+  conversationHistory: { role: string; content: string }[],
+  currentUser: User | null = null
 ): Promise<string> {
   const apiKey = await getApiKey();
 
@@ -158,8 +165,9 @@ export async function sendToAI(
   }
 
   try {
-    const businessContext = await buildBusinessContext();
-    const systemPromptWithContext = SYSTEM_PROMPT + businessContext;
+    const userId = currentUser?.id || DEMO_USER.id;
+    const businessContext = await buildBusinessContext(userId);
+    const systemPromptWithContext = generateSystemPrompt(currentUser) + businessContext;
 
     console.log('[AI] Initializing Gemini SDK...');
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -199,10 +207,11 @@ export async function sendToAI(
  */
 export async function chat(
   userMessage: string,
-  conversationHistory: { role: string; content: string }[] = []
+  conversationHistory: { role: string; content: string }[] = [],
+  currentUser: User | null = null
 ): Promise<{ response: string; isAI: boolean }> {
   // Try Gemini first
-  const aiResponse = await sendToAI(userMessage, conversationHistory);
+  const aiResponse = await sendToAI(userMessage, conversationHistory, currentUser);
 
   if (aiResponse) {
     return { response: aiResponse, isAI: true };
@@ -219,7 +228,7 @@ export async function chat(
 /**
  * Generate AI-powered business insights for the AI Mentor screen
  */
-export async function generateAIInsights(): Promise<{ insights: string; isAI: boolean }> {
+export async function generateAIInsights(currentUser: User | null = null): Promise<{ insights: string; isAI: boolean }> {
   const apiKey = await getApiKey();
 
   if (!apiKey) {
@@ -227,9 +236,11 @@ export async function generateAIInsights(): Promise<{ insights: string; isAI: bo
   }
 
   try {
-    const businessContext = await buildBusinessContext();
+    const userId = currentUser?.id || DEMO_USER.id;
+    const businessContext = await buildBusinessContext(userId);
+    const userName = currentUser?.name || DEMO_USER.name;
 
-    const prompt = `Berdasarkan data bisnis berikut, berikan 4-5 insight dan saran bisnis yang spesifik dan actionable untuk pemilik warung di Medan.
+    const prompt = `Berdasarkan data bisnis berikut, berikan 4-5 insight dan saran bisnis yang spesifik dan actionable untuk ${userName} sebagai pemilik warung di Medan.
 ${businessContext}
 
 Format jawaban:

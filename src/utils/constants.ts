@@ -29,7 +29,7 @@ export const DEMO_USER = {
 };
 
 // AI Chatbot config (Google Gemini)
-export const GEMINI_API_KEY = '[GCP_API_KEY]'; // Ganti dengan key 'AIzaSy...' Anda
+export const GEMINI_API_KEY = 'AIzaSyD1fU5peT72n2kBInQk3ePSmhBP43iCmGk';
 
 export const AI_CONFIG = {
   model: 'gemini-flash-latest',

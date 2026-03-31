@@ -3,16 +3,16 @@
 // Powered by Gemini 2.0 Flash dengan fallback lokal
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions, RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions, RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { generateAIInsights } from '../../src/services/ai/chatbot';
 import { getAllProducts, getLowStockProducts, getSalesSummary } from '../../src/services/database/repository';
@@ -104,7 +104,7 @@ export default function AIMentorScreen() {
 
       // Try AI-powered insights first
       setIsLoadingAI(true);
-      const aiResult = await generateAIInsights();
+      const aiResult = await generateAIInsights(user);
 
       if (aiResult.isAI && aiResult.insights) {
         const parsedInsights = parseAIInsights(aiResult.insights);
