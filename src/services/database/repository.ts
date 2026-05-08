@@ -10,6 +10,7 @@ const uuidv4 = () => {
 
 import { getDatabase, initializeDatabase } from './schema';
 import type { Product, Transaction, TransactionItem, CartItem, DailySales, SalesSummary } from '../../types';
+import { uploadSingleProduct, uploadTransaction as uploadTxToFirestore } from '../firebase/firestore-sync';
 
 // ==========================================
 // USERS
@@ -84,6 +85,9 @@ export async function createProduct(data: Omit<Product, 'id' | 'createdAt' | 'up
   // Add to sync outbox
   await addToOutbox('products', id, 'create', { ...data, id, createdAt: now, updatedAt: now });
 
+  // Sync to Firestore (background, non-blocking)
+  uploadSingleProduct(data.userId, id).catch(() => {});
+
   return { ...data, id, createdAt: now, updatedAt: now, deletedAt: null };
 }
 
@@ -115,6 +119,11 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
   );
 
   await addToOutbox('products', id, 'update', { ...updates, updatedAt: now });
+
+  // Sync to Firestore (background, non-blocking)
+  // Get userId from the product to sync
+  const product = await db.getFirstAsync<any>('SELECT user_id FROM products WHERE id = ?', [id]);
+  if (product) uploadSingleProduct(product.user_id, id).catch(() => {});
 }
 
 export async function deleteProduct(id: string): Promise<void> {
@@ -128,6 +137,10 @@ export async function deleteProduct(id: string): Promise<void> {
   );
 
   await addToOutbox('products', id, 'delete', { deletedAt: now });
+
+  // Sync deletion to Firestore (background, non-blocking)
+  const product = await db.getFirstAsync<any>('SELECT user_id FROM products WHERE id = ?', [id]);
+  if (product) uploadSingleProduct(product.user_id, id).catch(() => {});
 }
 
 export async function getLowStockProducts(userId: string): Promise<Product[]> {
@@ -183,6 +196,9 @@ export async function createTransaction(
   });
 
   await addToOutbox('transactions', transactionId, 'create', { totalAmount, paymentMethod, items: cartItems.length });
+
+  // Sync transaction to Firestore (background, non-blocking)
+  uploadTxToFirestore(userId, transactionId).catch(() => {});
 
   return {
     id: transactionId,
