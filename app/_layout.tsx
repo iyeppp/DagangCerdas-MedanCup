@@ -63,10 +63,13 @@ export default function RootLayout() {
           email: firebaseUser.email || '',
         };
         setUser(minimalUser as any);
-        upsertUser(minimalUser).catch(e => console.error('[SQLite] Failed to upsert user:', e));
         
-        // Auto-sync data dari Firestore ke SQLite saat app dibuka
-        syncAll(firebaseUser.uid)
+        // Ensure user exists in local DB BEFORE attempting to sync and update profile
+        upsertUser(minimalUser)
+          .then(() => {
+            // Auto-sync data dari Firestore ke SQLite saat app dibuka
+            return syncAll(firebaseUser.uid);
+          })
           .then(async () => {
             // Load full profile (with businessName, phone, etc.) from SQLite after sync
             const profile = await getUserProfile(firebaseUser.uid);
