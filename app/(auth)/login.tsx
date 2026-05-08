@@ -29,11 +29,6 @@ export default function LoginScreen() {
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleDemoLogin = () => {
-    loginAsDemo();
-    router.replace('/(tabs)');
-  };
-
   const handleAuth = async () => {
     // Validasi input
     if (!email.trim()) {
@@ -58,11 +53,7 @@ export default function LoginScreen() {
       if (result.error === 'DEMO_MODE') {
         Alert.alert(
           'Mode Demo',
-          'Firebase belum dikonfigurasi. Masuk ke mode demo?',
-          [
-            { text: 'Batal', style: 'cancel' },
-            { text: 'Mode Demo', onPress: handleDemoLogin },
-          ]
+          'Firebase belum dikonfigurasi. Mode demo telah dinonaktifkan.'
         );
         return;
       }
@@ -90,11 +81,7 @@ export default function LoginScreen() {
       if (result.error === 'DEMO_MODE') {
         Alert.alert(
           'Mode Demo',
-          'Firebase belum dikonfigurasi. Masuk ke mode demo?',
-          [
-            { text: 'Batal', style: 'cancel' },
-            { text: 'Mode Demo', onPress: handleDemoLogin },
-          ]
+          'Firebase belum dikonfigurasi. Mode demo telah dinonaktifkan.'
         );
         return;
       }
@@ -123,7 +110,7 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -146,9 +133,9 @@ export default function LoginScreen() {
           <FadeInView delay={200}>
             <View style={styles.featuresRow}>
               {[
-                { icon: 'cart', label: 'Smart Kasir' },
-                { icon: 'analytics', label: 'AI Mentor' },
-                { icon: 'people', label: 'Belanja Kolektif' },
+                { icon: 'cart', label: 'Kasir' },
+                { icon: 'analytics', label: 'AI' },
+                { icon: 'people', label: 'Belanja' },
               ].map((f, i) => (
                 <View key={i} style={styles.featureItem}>
                   <View style={styles.featureIcon}>
@@ -166,24 +153,6 @@ export default function LoginScreen() {
               <Text style={styles.formTitle}>
                 {isRegister ? 'Daftar Akun Baru' : 'Masuk ke Akun Anda'}
               </Text>
-
-              {/* Firebase status indicator */}
-              <View style={[
-                styles.firebaseStatus,
-                { backgroundColor: isFirebaseConfigured ? colors.successLight : colors.warningLight },
-              ]}>
-                <Ionicons
-                  name={isFirebaseConfigured ? 'cloud-done' : 'cloud-offline-outline'}
-                  size={14}
-                  color={isFirebaseConfigured ? colors.success : colors.warning}
-                />
-                <Text style={[
-                  styles.firebaseStatusText,
-                  { color: isFirebaseConfigured ? colors.success : colors.warning },
-                ]}>
-                  {isFirebaseConfigured ? 'Firebase Terhubung' : 'Mode Offline (Demo)'}
-                </Text>
-              </View>
 
               {isRegister && (
                 <View style={styles.inputGroup}>
@@ -264,24 +233,6 @@ export default function LoginScreen() {
                     : 'Belum punya akun? Daftar'}
                 </Text>
               </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>atau</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <ScalePressable onPress={handleDemoLogin} style={styles.demoButton}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="flash" size={20} color={colors.primary[600]} />
-                  <View style={{ width: 8 }} />
-                  <Text style={styles.demoButtonText}>Masuk Mode Demo</Text>
-                </View>
-              </ScalePressable>
-
-              <Text style={styles.demoHint}>
-                Mode demo menggunakan data contoh Warung Nasi di Medan
-              </Text>
             </View>
           </FadeInView>
 
@@ -289,7 +240,6 @@ export default function LoginScreen() {
           <FadeInView delay={600}>
             <Text style={styles.footer}>
               DagangCerdas v1.0.0 • MCC 2026{'\n'}
-              Membangun UMKM Digital Menuju Indonesia Emas 2045
             </Text>
           </FadeInView>
         </ScrollView>

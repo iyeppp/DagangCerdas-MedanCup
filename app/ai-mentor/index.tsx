@@ -158,7 +158,7 @@ export default function AIMentorScreen() {
         icon: 'trending-up',
         iconColor: colors.success,
         title: 'Proyeksi Omzet Bulan Ini',
-        description: `Berdasarkan rata-rata ${formatRupiah(avgDaily)}/hari, proyeksi omzet bulan ini sekitar ${formatRupiah(monthProjection)}. ${monthProjection > 10_000_000 ? 'Mantap! 🎉' : 'Terus tingkatkan!'}`,
+        description: `Berdasarkan rata-rata ${formatRupiah(avgDaily)}/hari, proyeksi omzet bulan ini sekitar ${formatRupiah(monthProjection)}. ${monthProjection > 10_000_000 ? 'Mantap!' : 'Terus tingkatkan!'}`,
         type: 'success',
       });
     }
@@ -193,7 +193,7 @@ export default function AIMentorScreen() {
         id: 'morning-tips',
         icon: 'sunny',
         iconColor: '#FF9800',
-        title: 'Tips Pagi Ini ☀️',
+        title: 'Tips Pagi Ini',
         description: 'Siapkan menu sarapan yang cepat saji (Nasi + Lauk + Teh). Pekerja pabrik di KIM biasanya sarapan pukul 06:30-07:30.',
         type: 'tip',
       });
@@ -202,7 +202,7 @@ export default function AIMentorScreen() {
         id: 'lunch-tips',
         icon: 'restaurant',
         iconColor: '#FF5722',
-        title: 'Jam Makan Siang! 🍽️',
+        title: 'Jam Makan Siang!',
         description: 'Ini adalah golden hour untuk warung Anda. Pastikan menu utama siap dan beri pelayanan cepat. Data menunjukkan 40% penjualan terjadi di jam ini.',
         type: 'tip',
       });
@@ -211,7 +211,7 @@ export default function AIMentorScreen() {
         id: 'evening-tips',
         icon: 'moon',
         iconColor: '#5C6BC0',
-        title: 'Persiapan Besok 🌙',
+        title: 'Persiapan Besok',
         description: 'Waktu yang tepat untuk cek stok dan siapkan bahan untuk besok pagi. Review produk apa yang paling laku hari ini dan pastikan tidak kehabisan.',
         type: 'tip',
       });
@@ -271,9 +271,9 @@ export default function AIMentorScreen() {
           <Text style={styles.scoreMax}>/100</Text>
         </View>
         <Text style={styles.scoreLabel}>
-          {lowStock.length === 0 ? '✅ Baik — Bisnis Anda berjalan dengan baik!' :
-            lowStock.length <= 2 ? '⚠️ Perlu Perhatian — Beberapa produk perlu di-restok' :
-              '🔴 Perlu Tindakan — Banyak produk stok rendah'}
+          {lowStock.length === 0 ? 'Baik — Bisnis Anda berjalan dengan baik!' :
+            lowStock.length <= 2 ? 'Perlu Perhatian — Beberapa produk perlu di-restok' :
+              'Perlu Tindakan — Banyak produk stok rendah'}
         </Text>
       </View>
 
@@ -332,7 +332,7 @@ export default function AIMentorScreen() {
         <View style={styles.sectionHeader}>
           <Ionicons name="bulb" size={20} color="#FF9800" />
           <Text style={styles.sectionTitle}>
-            {isAIActive ? 'Saran AI Cerdas ✨' : 'Saran Cerdas'}
+            {isAIActive ? 'Saran AI Cerdas' : 'Saran Cerdas'}
           </Text>
         </View>
 

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
@@ -26,10 +26,9 @@ export default function ProfileScreen() {
     { icon: 'chatbubble-ellipses-outline', label: 'AI Asisten Cerdas', onPress: () => router.push('/chat') },
     { icon: 'analytics-outline', label: 'AI Mentor Bisnis', onPress: () => router.push('/ai-mentor') },
     { icon: 'receipt-outline', label: 'Riwayat Transaksi', onPress: () => router.push('/transaction') },
-    { icon: 'cloud-outline', label: 'Sinkronisasi Data', onPress: () => Alert.alert('Sync', 'Sinkronisasi data berhasil! ✅') },
+    { icon: 'cloud-outline', label: 'Sinkronisasi Data', onPress: () => Alert.alert('Sync', 'Sinkronisasi data berhasil!') },
     { icon: 'help-circle-outline', label: 'Bantuan & FAQ', onPress: () => router.push('/profile/faq') },
     { icon: 'information-circle-outline', label: 'Tentang Aplikasi', onPress: () => Alert.alert('DagangCerdas v1.0.0', 'Dibuat untuk MCC 2026\n\nSolusi Cerdas UMKM Naik Kelas\n\n© 2026 Tim DagangCerdas') },
-    { icon: 'log-out-outline', label: 'Keluar (Logout)', onPress: handleLogout },
   ];
 
   return (
@@ -37,9 +36,11 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {(user?.name || 'Toko').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-          </Text>
+          <Image 
+            source={require('../../assets/images/favicon.png')} 
+            style={{ width: '100%', height: '100%', borderRadius: 36, backgroundColor: '#FFFFFF' }} 
+            resizeMode="cover" 
+          />
         </View>
         <Text style={styles.userName}>{user?.name || 'Pengguna UMKM'}</Text>
         <Text style={styles.businessName}>{user?.businessName || user?.name || 'Toko Anda'}</Text>

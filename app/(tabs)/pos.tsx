@@ -15,7 +15,8 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Image
 } from 'react-native';
 import { ScalePressable } from '../../src/components/animations';
 import { BarcodeScanner } from '../../src/components/scanner/BarcodeScanner';
@@ -37,7 +38,6 @@ export default function POSScreen() {
   const [showCart, setShowCart] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
   const [lastTransaction, setLastTransaction] = useState<any>(null);
 
   const cart = useCartStore();
@@ -96,38 +96,12 @@ export default function POSScreen() {
     }
   };
 
-  const handleBarcodeScanned = async (barcode: string) => {
-    setShowScanner(false);
-    // Cari produk berdasarkan barcode
-    const product = await getProductByBarcode(barcode, user?.id || '');
-    if (product) {
-      cart.addItem(product);
-      Alert.alert(
-        '✅ Produk Ditemukan!',
-        `"${product.name}" ditambahkan ke keranjang.\nHarga: ${formatRupiah(product.price)}`,
-        [{ text: 'OK' }]
-      );
-    } else {
-      // Cari di semua produk (mungkin barcode di field name)
-      const found = products.find(p => p.barcode === barcode);
-      if (found) {
-        cart.addItem(found);
-        Alert.alert('✅ Produk Ditemukan!', `"${found.name}" ditambahkan ke keranjang.`);
-      } else {
-        Alert.alert(
-          '❌ Barcode Tidak Ditemukan',
-          `Barcode: ${barcode}\n\nProduk belum terdaftar. Tambahkan produk baru di menu Stok.`,
-          [
-            { text: 'OK' },
-            { text: 'Scan Lagi', onPress: () => setShowScanner(true) },
-          ]
-        );
-      }
-    }
-  };
-
-  const categories = ['Semua', ...PRODUCT_CATEGORIES];
-
+  const activeCategories = Array.from(new Set(products.map(p => p.category)));
+  const categories = [
+    'Semua',
+    ...PRODUCT_CATEGORIES.filter(cat => activeCategories.includes(cat)),
+    ...activeCategories.filter(cat => !PRODUCT_CATEGORIES.includes(cat as any))
+  ];
   const renderProductItem = ({ item }: { item: Product }) => {
     const cartQty = cart.getItemCount(item.id);
     return (
@@ -159,9 +133,16 @@ export default function POSScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Smart Kasir</Text>
-        <Text style={styles.headerSubtitle}>{user?.businessName || user?.name || 'Toko UMKM'}</Text>
+      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+        <View>
+          <Text style={styles.headerTitle}>Smart Kasir</Text>
+          <Text style={styles.headerSubtitle}>{user?.businessName || user?.name || 'Toko UMKM'}</Text>
+        </View>
+        <Image 
+          source={require('../../assets/images/favicon.png')} 
+          style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: '#FFFFFF' }} 
+          resizeMode="contain"
+        />
       </View>
 
       {/* Search Bar */}
@@ -170,7 +151,7 @@ export default function POSScreen() {
           <Ionicons name="search" size={20} color={colors.neutral[400]} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Cari produk atau scan barcode..."
+            placeholder="Cari produk..."
             placeholderTextColor={colors.neutral[400]}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -181,12 +162,6 @@ export default function POSScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        <TouchableOpacity
-          style={styles.scanButton}
-          onPress={() => setShowScanner(true)}
-        >
-          <Ionicons name="barcode-outline" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
       </View>
 
       {/* Product Grid with Category Filter as Header */}
@@ -378,7 +353,7 @@ export default function POSScreen() {
             <View style={styles.successIcon}>
               <Ionicons name="checkmark-circle" size={72} color={colors.success} />
             </View>
-            <Text style={styles.successTitle}>Transaksi Berhasil! 🎉</Text>
+            <Text style={styles.successTitle}>Transaksi Berhasil!</Text>
             <Text style={styles.successAmount}>
               {lastTransaction ? formatRupiah(lastTransaction.totalAmount) : ''}
             </Text>
@@ -394,14 +369,6 @@ export default function POSScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-
-      {/* Barcode Scanner Modal */}
-      <Modal visible={showScanner} animationType="slide">
-        <BarcodeScanner
-          onBarcodeScanned={handleBarcodeScanned}
-          onClose={() => setShowScanner(false)}
-        />
       </Modal>
     </View>
   );

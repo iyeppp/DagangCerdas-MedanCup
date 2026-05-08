@@ -34,7 +34,7 @@ interface ChatMessage {
   isAI?: boolean; // true = from OpenAI, false = local fallback
 }
 
-const WELCOME_MESSAGE = 'Halo! Saya **Cerdas** 🤖, asisten AI bisnis Anda.\n\nSaya bisa membantu:\n📊 Analisis penjualan & rangkuman laporan\n📦 Cek stok & saran restok\n💡 Tips meningkatkan omzet\n🔮 Prediksi kebutuhan bisnis\n📍 Insight pasar UMKM Medan\n\nSilakan tanya apa saja tentang bisnis Anda!';
+const WELCOME_MESSAGE = 'Halo! Saya **Cerdas**, asisten AI bisnis Anda.\n\nSaya bisa membantu:\n- Analisis penjualan & rangkuman laporan\n- Cek stok & saran restok\n- Tips meningkatkan omzet\n- Prediksi kebutuhan bisnis\n- Insight pasar UMKM Medan\n\nSilakan tanya apa saja tentang bisnis Anda!';
 
 export default function ChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -210,11 +210,12 @@ export default function ChatScreen() {
   };
 
   const quickQuestions = [
-    '📊 Rangkum laporan penjualan minggu ini',
-    '📦 Analisis stok produk saya',
-    '💡 Berikan tips meningkatkan omzet',
-    '🔮 Prediksi kebutuhan stok minggu depan',
-    '📍 Insight pasar UMKM di Medan',
+    'Rangkum laporan penjualan minggu ini',
+    'Analisis stok produk saya',
+    'Berikan tips meningkatkan omzet',
+    'Produk apa yang harus saya restok?',
+    'Buatkan rekap penjualan hari ini',
+    'Insight pasar UMKM di Medan',
   ];
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {

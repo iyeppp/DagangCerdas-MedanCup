@@ -274,6 +274,27 @@ export async function downloadTransactions(userId: string): Promise<number> {
 
       for (const itemDoc of itemsSnapshot.docs) {
         const itemData = itemDoc.data();
+        
+        // Pastikan produk ada di database lokal agar tidak kena error FOREIGN KEY
+        try {
+          await sqliteDb.runAsync(
+            `INSERT INTO products (id, user_id, name, category, price, stock, is_active, created_at, updated_at, deleted_at)
+             VALUES (?, ?, ?, 'Lainnya', ?, 0, 0, ?, ?, ?)
+             ON CONFLICT(id) DO NOTHING`,
+            [
+              itemData.productId,
+              userId,
+              itemData.productName || 'Produk Dihapus',
+              itemData.unitPrice || 0,
+              Date.now(),
+              Date.now(),
+              Date.now() // Langsung set deleted_at agar tidak muncul di daftar produk aktif
+            ]
+          );
+        } catch (e) {
+          console.warn('[Sync] Info: Placeholder product step failed:', e);
+        }
+
         await sqliteDb.runAsync(
           `INSERT INTO transaction_items (id, transaction_id, product_id, product_name, quantity, unit_price, subtotal)
            VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -295,8 +316,12 @@ export async function downloadTransactions(userId: string): Promise<number> {
 
     console.log(`[Sync] Downloaded ${count} transactions from Firestore`);
     return count;
-  } catch (error) {
-    console.error('[Sync] Download transactions error:', error);
+  } catch (error: any) {
+    if (error?.message?.includes('Missing or insufficient permissions')) {
+      console.log('[Sync] Download transactions aborted (User logged out)');
+    } else {
+      console.error('[Sync] Download transactions error:', error);
+    }
     return 0;
   }
 }

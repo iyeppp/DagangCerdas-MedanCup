@@ -162,7 +162,6 @@ export async function initializeDatabase(): Promise<void> {
 
     -- Create indexes for performance
     CREATE INDEX IF NOT EXISTS idx_products_user ON products(user_id);
-    CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
     CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(created_at);
@@ -173,8 +172,8 @@ export async function initializeDatabase(): Promise<void> {
 
   // Graceful migration command for existing databases
   try {
-    const tableInfo = await database.getAllAsync('PRAGMA table_info(chat_messages);') as any[];
-    const hasSessionId = tableInfo.some(col => col.name === 'session_id');
+    const chatTableInfo = await database.getAllAsync('PRAGMA table_info(chat_messages);') as any[];
+    const hasSessionId = chatTableInfo.some(col => col.name === 'session_id');
     
     if (!hasSessionId) {
       await database.runAsync(`
@@ -183,8 +182,20 @@ export async function initializeDatabase(): Promise<void> {
       console.log('[DB] Migrated chat_messages successfully (added session_id)');
     }
     await database.execAsync('CREATE INDEX IF NOT EXISTS idx_chat_messages_session ON chat_messages(session_id);');
+
+    // Migration for products table (barcode column)
+    const productsTableInfo = await database.getAllAsync('PRAGMA table_info(products);') as any[];
+    const hasBarcode = productsTableInfo.some(col => col.name === 'barcode');
+    
+    if (!hasBarcode) {
+      await database.runAsync(`
+        ALTER TABLE products ADD COLUMN barcode TEXT;
+      `);
+      console.log('[DB] Migrated products successfully (added barcode)');
+    }
+    await database.execAsync('CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);');
   } catch (err) {
-    console.error('[DB] Migration error for chat_messages:', err);
+    console.error('[DB] Migration error:', err);
   }
   
   console.log('[DB] Database initialized successfully');

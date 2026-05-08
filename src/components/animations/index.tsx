@@ -168,7 +168,7 @@ export function ScalePressable({
   };
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+    <Animated.View style={{ transform: [{ scale }] }}>
       <TouchableOpacity
         onPress={onPress}
         onLongPress={onLongPress}
@@ -176,6 +176,7 @@ export function ScalePressable({
         onPressOut={handlePressOut}
         activeOpacity={1}
         disabled={disabled}
+        style={style}
       >
         {children}
       </TouchableOpacity>

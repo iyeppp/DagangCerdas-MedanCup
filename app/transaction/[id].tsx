@@ -116,7 +116,7 @@ export default function TransactionDetailScreen() {
              transaction.paymentMethod === 'qris' ? 'QRIS' : 'Transfer Bank'}
           </Text>
           <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>✅ Selesai</Text>
+            <Text style={styles.statusText}>Selesai</Text>
           </View>
         </View>
       </View>

@@ -12,7 +12,6 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../src/th
 import { formatRupiah } from '../../src/utils/formatters';
 import { useAuthStore } from '../../src/stores/authStore';
 import { getAllProducts, createProduct, updateProduct, deleteProduct, getLowStockProducts } from '../../src/services/database/repository';
-import { BarcodeScanner } from '../../src/components/scanner/BarcodeScanner';
 import type { Product } from '../../src/types';
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from '../../src/types/product';
 
@@ -39,7 +38,7 @@ export default function InventoryScreen() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [lowStockCount, setLowStockCount] = useState(0);
   const [filterLowStock, setFilterLowStock] = useState(false);
-  const [showScanModal, setShowScanModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const { user } = useAuthStore();
 
   // Form state
@@ -71,12 +70,21 @@ export default function InventoryScreen() {
     }, [loadProducts, user?.id])
   );
 
+  const activeCategories = Array.from(new Set(products.map(p => p.category)));
+  const categories = [
+    'Semua',
+    ...PRODUCT_CATEGORIES.filter(cat => activeCategories.includes(cat)),
+    ...activeCategories.filter(cat => !PRODUCT_CATEGORIES.includes(cat as any))
+  ];
+
   const filteredProducts = products.filter(p => {
     const matchSearch = !searchQuery ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.barcode && p.barcode.includes(searchQuery));
     const matchLowStock = !filterLowStock || p.stock <= p.minStock;
-    return matchSearch && matchLowStock;
+    const matchCategory = selectedCategory === 'Semua' || p.category === selectedCategory;
+    return matchSearch && matchLowStock && matchCategory;
   });
 
   const resetForm = () => {
@@ -153,16 +161,16 @@ export default function InventoryScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.productCardHeader}>
-          <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
+          <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '15' }]}>
             <Text style={[styles.categoryBadgeText, { color: getCategoryColor(item.category) }]}>
               {item.category}
             </Text>
           </View>
           {isLowStock && (
-            <Ionicons name="alert-circle" size={18} color={colors.error} />
+            <Ionicons name="alert-circle" size={20} color={colors.error} />
           )}
         </View>
-        <Text style={styles.productCardName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.productCardName} numberOfLines={2}>{item.name}</Text>
         <Text style={styles.productCardPrice}>{formatRupiah(item.price)}</Text>
         <View style={styles.productCardFooter}>
           <Text style={[styles.productCardStock, isLowStock && { color: colors.error }]}>
@@ -225,6 +233,30 @@ export default function InventoryScreen() {
         contentContainerStyle={styles.productList}
         columnWrapperStyle={styles.productListRow}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryList}
+            style={styles.categoryScrollView}
+          >
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoryChipFilter, selectedCategory === cat && styles.categoryChipFilterActive]}
+                onPress={() => setSelectedCategory(cat)}
+              >
+                <Text 
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[styles.categoryChipFilterText, selectedCategory === cat && styles.categoryChipFilterTextActive]}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="cube-outline" size={48} color={colors.neutral[300]} />
@@ -310,48 +342,6 @@ export default function InventoryScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-
-              <Text style={styles.inputLabel}>Barcode</Text>
-              <View style={styles.barcodeSection}>
-                {formBarcode ? (
-                  <View style={styles.barcodeDisplay}>
-                    <Ionicons name="barcode" size={20} color={colors.primary[600]} />
-                    <Text style={styles.barcodeValue}>{formBarcode}</Text>
-                    <TouchableOpacity onPress={() => setFormBarcode('')}>
-                      <Ionicons name="close-circle" size={18} color={colors.neutral[400]} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <Text style={styles.barcodeHint}>Barcode akan otomatis di-generate jika kosong</Text>
-                )}
-                <View style={styles.barcodeActions}>
-                  <TouchableOpacity
-                    style={styles.barcodeActionBtn}
-                    onPress={() => setShowScanModal(true)}
-                  >
-                    <Ionicons name="camera-outline" size={18} color={colors.primary[600]} />
-                    <Text style={styles.barcodeActionText}>Scan</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.barcodeActionBtn}
-                    onPress={() => setFormBarcode(generateBarcode())}
-                  >
-                    <Ionicons name="refresh-outline" size={18} color={colors.primary[600]} />
-                    <Text style={styles.barcodeActionText}>Generate</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.barcodeActionBtn}
-                    onPress={() => {
-                      Alert.prompt
-                        ? Alert.prompt('Ketik Barcode', 'Masukkan kode barcode manual:', (text) => { if (text) setFormBarcode(text); })
-                        : Alert.alert('Ketik Manual', 'Gunakan tombol Scan atau Generate untuk memasukkan barcode.');
-                    }}
-                  >
-                    <Ionicons name="create-outline" size={18} color={colors.primary[600]} />
-                    <Text style={styles.barcodeActionText}>Manual</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
             </ScrollView>
 
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -362,18 +352,6 @@ export default function InventoryScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Barcode Scanner Modal (untuk form) */}
-      <Modal visible={showScanModal} animationType="slide">
-        <BarcodeScanner
-          onBarcodeScanned={(barcode) => {
-            setShowScanModal(false);
-            setFormBarcode(barcode);
-            Alert.alert('✅ Barcode Terscan!', `Kode: ${barcode}`);
-          }}
-          onClose={() => setShowScanModal(false)}
-        />
       </Modal>
     </View>
   );
@@ -421,21 +399,34 @@ const styles = StyleSheet.create({
     backgroundColor: colors.error, justifyContent: 'center', alignItems: 'center',
   },
   filterBadgeText: { fontSize: 9, fontWeight: '700', color: '#FFFFFF' },
+  
+  // Category Filter
+  categoryList: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },
+  categoryScrollView: { marginBottom: spacing.sm, marginHorizontal: -spacing.lg },
+  categoryChipFilter: {
+    height: 40, paddingHorizontal: 16, borderRadius: borderRadius.full,
+    backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.border.default, ...shadows.sm,
+  },
+  categoryChipFilterActive: { backgroundColor: colors.primary[500], borderColor: colors.primary[500] },
+  categoryChipFilterText: { ...typography.labelSm, color: colors.text.secondary },
+  categoryChipFilterTextActive: { color: '#FFFFFF' },
+
   productList: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
   productListRow: { gap: spacing.md, marginBottom: spacing.md },
   productCard: {
     width: (SCREEN_WIDTH - 48 - 12) / 2, backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.lg, padding: spacing.lg, ...shadows.sm,
-    borderLeftWidth: 3, borderLeftColor: colors.primary[300],
+    borderRadius: borderRadius.xl, padding: spacing.lg, ...shadows.md,
+    borderWidth: 1, borderColor: colors.border.light,
   },
-  productCardWarning: { borderLeftColor: colors.error, backgroundColor: '#FFF8F7' },
-  productCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  productCardWarning: { borderColor: colors.error, backgroundColor: '#FFF8F7' },
+  productCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: spacing.sm },
   categoryBadge: { borderRadius: borderRadius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2 },
-  categoryBadgeText: { fontSize: 10, fontWeight: '600' },
-  productCardName: { ...typography.label, color: colors.text.primary, marginBottom: 4 },
-  productCardPrice: { ...typography.bodyLg, color: colors.primary[600], fontWeight: '700', marginBottom: spacing.sm },
-  productCardFooter: { gap: 2 },
-  productCardStock: { ...typography.caption, color: colors.text.tertiary },
+  categoryBadgeText: { fontSize: 10, fontWeight: '700' },
+  productCardName: { ...typography.label, color: colors.text.primary, marginBottom: spacing.sm, minHeight: 36 },
+  productCardPrice: { ...typography.h5, color: colors.primary[600], marginBottom: spacing.sm },
+  productCardFooter: { gap: 4, marginTop: 'auto' },
+  productCardStock: { ...typography.bodySm, color: colors.text.secondary },
   productCardProfit: { ...typography.caption, color: colors.success },
   emptyState: { alignItems: 'center', paddingVertical: spacing['5xl'] },
   emptyText: { ...typography.body, color: colors.text.tertiary, marginTop: spacing.md },

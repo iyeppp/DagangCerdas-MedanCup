@@ -90,10 +90,10 @@ export default function DashboardScreen() {
 
   // AI suggestion based on data
   const aiSuggestion = lowStockProducts.length > 0
-    ? `⚠️ ${lowStockProducts.length} produk stok rendah! "${lowStockProducts[0]?.name}" hanya tersisa ${lowStockProducts[0]?.stock} ${lowStockProducts[0]?.unit}. Pertimbangkan untuk restok via Belanja Kolektif.`
+    ? `${lowStockProducts.length} produk stok rendah! "${lowStockProducts[0]?.name}" hanya tersisa ${lowStockProducts[0]?.stock} ${lowStockProducts[0]?.unit}. Pertimbangkan untuk restok via Belanja Kolektif.`
     : todaySales.count > 0
-      ? `📊 Hari ini sudah ${todaySales.count} transaksi dengan omzet ${formatRupiah(todaySales.revenue)}. Pertahankan momentum ini!`
-      : '💡 Belum ada transaksi hari ini. Mulai catat penjualan di menu Kasir untuk mendapatkan insight bisnis dari AI.';
+      ? `Hari ini sudah ${todaySales.count} transaksi dengan omzet ${formatRupiah(todaySales.revenue)}. Pertahankan momentum ini!`
+      : 'Belum ada transaksi hari ini. Mulai catat penjualan di menu Kasir untuk mendapatkan insight bisnis dari AI.';
 
   // Animated KPI values
   const animatedRevenue = useCountAnimation(todaySales.revenue, 1500, 300);
@@ -117,7 +117,7 @@ export default function DashboardScreen() {
       >
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>{greeting} 👋</Text>
+            <Text style={styles.greeting}>{greeting}</Text>
             <Text style={styles.businessName}>{user?.businessName || user?.name || 'Toko UMKM'}</Text>
             <Text style={styles.dateText}>{formatDate(Date.now(), 'long')}</Text>
           </View>
@@ -126,9 +126,6 @@ export default function DashboardScreen() {
             onPress={() => router.push('/chat')}
           >
             <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
-            <View style={styles.notifBadge}>
-              <Text style={styles.notifBadgeText}>AI</Text>
-            </View>
           </TouchableOpacity>
         </View>
 
@@ -239,23 +236,31 @@ export default function DashboardScreen() {
       <FadeInView delay={800} style={styles.section}>
         <Text style={styles.sectionTitle}>Ringkasan Minggu Ini</Text>
         <View style={styles.summaryGrid}>
-          <View style={[styles.summaryCard, { borderLeftColor: colors.primary[500] }]}>
-            <Ionicons name="wallet-outline" size={24} color={colors.primary[500]} />
+          <View style={[styles.summaryCard, { borderColor: colors.primary[100] }]}>
+            <View style={[styles.summaryIconBox, { backgroundColor: colors.primary[50] }]}>
+              <Ionicons name="wallet-outline" size={22} color={colors.primary[600]} />
+            </View>
             <Text style={styles.summaryValue}>{formatRupiah(summary?.totalRevenue || 0)}</Text>
             <Text style={styles.summaryLabel}>Total Omzet</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: colors.success }]}>
-            <Ionicons name="trending-up-outline" size={24} color={colors.success} />
+          <View style={[styles.summaryCard, { borderColor: colors.success + '20' }]}>
+            <View style={[styles.summaryIconBox, { backgroundColor: colors.success + '15' }]}>
+              <Ionicons name="trending-up-outline" size={22} color={colors.success} />
+            </View>
             <Text style={styles.summaryValue}>{formatRupiah(summary?.totalProfit || 0)}</Text>
             <Text style={styles.summaryLabel}>Total Profit</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: colors.accent[500] }]}>
-            <Ionicons name="receipt-outline" size={24} color={colors.accent[500]} />
+          <View style={[styles.summaryCard, { borderColor: colors.accent[100] }]}>
+            <View style={[styles.summaryIconBox, { backgroundColor: colors.accent[50] }]}>
+              <Ionicons name="receipt-outline" size={22} color={colors.accent[600]} />
+            </View>
             <Text style={styles.summaryValue}>{summary?.totalTransactions || 0}</Text>
-            <Text style={styles.summaryLabel}>Transaksi</Text>
+            <Text style={styles.summaryLabel}>Total Transaksi</Text>
           </View>
-          <View style={[styles.summaryCard, { borderLeftColor: colors.warning }]}>
-            <Ionicons name="calculator-outline" size={24} color={colors.warning} />
+          <View style={[styles.summaryCard, { borderColor: colors.warning + '30' }]}>
+            <View style={[styles.summaryIconBox, { backgroundColor: colors.warning + '15' }]}>
+              <Ionicons name="calculator-outline" size={22} color={colors.warning} />
+            </View>
             <Text style={styles.summaryValue}>{formatRupiah(summary?.averagePerTransaction || 0)}</Text>
             <Text style={styles.summaryLabel}>Rata-rata/Trx</Text>
           </View>
@@ -427,14 +432,15 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   aiSuggestionTitle: {
-    ...typography.labelSm,
-    color: colors.primary[600],
+    ...typography.label,
+    color: colors.primary[700],
+    fontWeight: '700',
     marginBottom: 2,
   },
   aiSuggestionText: {
-    ...typography.caption,
+    ...typography.bodySm,
     color: colors.text.secondary,
-    lineHeight: 16,
+    lineHeight: 18,
   },
 
   // Section
@@ -506,20 +512,29 @@ const styles = StyleSheet.create({
   summaryCard: {
     width: (SCREEN_WIDTH - 48 - 12) / 2,
     backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
-    borderLeftWidth: 3,
-    ...shadows.sm,
+    borderWidth: 1,
+    ...shadows.md,
+  },
+  summaryIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   summaryValue: {
-    ...typography.label,
+    ...typography.h4,
+    fontSize: 18,
     color: colors.text.primary,
-    marginTop: spacing.sm,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   summaryLabel: {
-    ...typography.caption,
-    color: colors.text.tertiary,
+    ...typography.bodySm,
+    color: colors.text.secondary,
+    fontWeight: '500',
   },
 
   // Top Products
