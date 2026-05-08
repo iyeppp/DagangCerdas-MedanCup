@@ -14,13 +14,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Firebase config — ISI DENGAN DATA DARI FIREBASE CONSOLE
 // Langkah: https://console.firebase.google.com → Buat project → Project Settings → Web App
 const firebaseConfig = {
-  apiKey: 'AIzaSyDmGr_P8JPDwI2Cs7wJGK50Z9qFf4voqf8',
-  authDomain: 'mobile-apps-10a61.firebaseapp.com',
-  projectId: 'mobile-apps-10a61',
-  storageBucket: 'mobile-apps-10a61.firebasestorage.app',
-  messagingSenderId: '421514159709',
-  appId: '1:421514159709:web:c442d57b99670f33088fb4',
-  measurementId: 'G-BGBN5RYVQR',
+  apiKey: 'AIzaSyA3851BKAxR1ty1HAkSQsh9H2mqMy-Sz3A',
+  authDomain: 'medancup-4616a.firebaseapp.com',
+  projectId: 'medancup-4616a',
+  storageBucket: 'medancup-4616a.firebasestorage.app',
+  messagingSenderId: '282364094592',
+  appId: '1:282364094592:web:fcde53f932f6014bc51e65',
+  measurementId: 'G-B3PKJ6E2G5',
 };
 
 // Initialize Firebase (singleton pattern)
@@ -34,11 +34,12 @@ if (getApps().length === 0) {
 // Initialize Auth with AsyncStorage persistence
 let auth: ReturnType<typeof getAuth>;
 try {
-  auth = initializeAuth(app, {
-    persistence: (getReactNativePersistence as any)(AsyncStorage),
-  });
+  console.log('[Firebase] Initializing Auth...');
+  const persistence = (getReactNativePersistence as any)(AsyncStorage);
+  auth = initializeAuth(app, { persistence });
+  console.log('[Firebase] Auth initialized with persistence');
 } catch (e) {
-  // Auth already initialized
+  console.log('[Firebase] Auth already initialized or error:', e);
   auth = getAuth(app);
 }
 

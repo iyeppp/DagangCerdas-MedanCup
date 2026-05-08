@@ -1,50 +1,47 @@
-# Welcome to your Expo app 👋
+# DagangCerdas — Solusi Cerdas UMKM Naik Kelas 🚀
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+DagangCerdas adalah aplikasi manajemen bisnis terintegrasi yang dirancang khusus untuk pelaku UMKM di Kota Medan. Aplikasi ini menggabungkan kekuatan AI, manajemen stok real-time, dan sistem kasir pintar untuk membantu pengusaha lokal mengoptimalkan operasional dan meningkatkan omzet.
 
-## Get started
+## ✨ Fitur Utama
 
-1. Install dependencies
+- **🤖 AI Mentor Bisnis (Powered by Groq/Llama 3)**: Asisten AI yang memberikan analisis penjualan mingguan, saran restok produk, dan tips bisnis spesifik untuk pasar Medan.
+- **🛒 Smart POS (Kasir Pintar)**: Pencatatan transaksi cepat dengan dukungan scan barcode, manajemen keranjang, dan berbagai metode pembayaran (Tunai, QRIS, Transfer).
+- **📦 Manajemen Stok Canggih**: Monitoring persediaan barang dengan notifikasi stok rendah otomatis dan sistem generate barcode EAN-13.
+- **👥 Belanja Kolektif**: Fitur inovatif untuk UMKM agar bisa melakukan pembelian stok secara bersama-sama guna mendapatkan harga grosir yang lebih murah.
+- **📊 Dashboard KPI**: Visualisasi performa bisnis (Omzet, Profit, Transaksi) dalam bentuk grafik yang mudah dipahami.
+- **🔐 Firebase Integration**: Sistem keamanan data menggunakan Google Firebase untuk otentikasi dan penyimpanan data yang sinkron.
 
+## 🛠️ Tech Stack
+
+- **Frontend**: React Native, Expo, Expo Router
+- **Backend/DB**: Firebase Auth, Firestore
+- **AI Engine**: Groq Cloud API (Llama-3.3-70b)
+- **Styling**: Vanilla CSS with custom Design System
+- **State Management**: Zustand & React Context
+
+## 🚀 Cara Menjalankan
+
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/ZeaLIsHere/DagangCerdas-MedanCup.git
+   cd DagangCerdas-MedanCup
+   ```
+
+2. **Install Dependensi**
    ```bash
    npm install
    ```
 
-2. Start the app
+3. **Konfigurasi API**
+   - Pastikan API Key Groq sudah terpasang di `src/utils/constants.ts`
+   - Konfigurasi Firebase di `src/services/firebase/config.ts`
 
+4. **Jalankan Aplikasi**
    ```bash
    npx expo start
    ```
+   Gunakan aplikasi **Expo Go** di Android/iOS atau jalankan emulator.
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---
+**DagangCerdas** — Dibuat untuk **Medan Cup (MCC) 2026**
+*Membangun UMKM Digital Menuju Indonesia Emas 2045*

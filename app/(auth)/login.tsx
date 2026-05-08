@@ -236,12 +236,13 @@ export default function LoginScreen() {
                 {loading ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={styles.loginButtonText}>
                       {isRegister ? 'Daftar' : 'Masuk'}
                     </Text>
+                    <View style={{ width: 8 }} />
                     <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                  </>
+                  </View>
                 )}
               </ScalePressable>
 
@@ -264,8 +265,11 @@ export default function LoginScreen() {
               </View>
 
               <ScalePressable onPress={handleDemoLogin} style={styles.demoButton}>
-                <Ionicons name="flash" size={20} color={colors.primary[600]} />
-                <Text style={styles.demoButtonText}>Masuk Mode Demo</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="flash" size={20} color={colors.primary[600]} />
+                  <View style={{ width: 8 }} />
+                  <Text style={styles.demoButtonText}>Masuk Mode Demo</Text>
+                </View>
               </ScalePressable>
 
               <Text style={styles.demoHint}>

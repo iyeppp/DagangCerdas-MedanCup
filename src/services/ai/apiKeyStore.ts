@@ -1,20 +1,20 @@
 // DagangCerdas — API Key Store
-// Menyimpan API key Google Gemini secara aman menggunakan expo-secure-store
+// Menyimpan API key AI secara aman menggunakan expo-secure-store
 
 import * as SecureStore from 'expo-secure-store';
-import { GEMINI_API_KEY } from '../../utils/constants';
+import { AI_API_KEY } from '../../utils/constants';
 
-const API_KEY_STORAGE = 'dagangcerdas_gemini_key';
+const API_KEY_STORAGE = 'dagangcerdas_ai_key';
 
 let cachedKey: string | null = null;
 
 /**
- * Get the stored Gemini API key
+ * Get the stored AI API key
  */
 export async function getApiKey(): Promise<string | null> {
   // 1. Cek dari kodingan langsung (jika user mengisi hardcode)
-  if (GEMINI_API_KEY && GEMINI_API_KEY.startsWith('AIzaSy')) {
-    return GEMINI_API_KEY;
+  if (AI_API_KEY && (AI_API_KEY.startsWith('gsk_') || AI_API_KEY.startsWith('xai-') || AI_API_KEY.startsWith('AIza'))) {
+    return AI_API_KEY;
   }
 
   // 2. Cek cache memori
@@ -31,7 +31,7 @@ export async function getApiKey(): Promise<string | null> {
 }
 
 /**
- * Save/update the Gemini API key
+ * Save/update the AI API key
  */
 export async function setApiKey(key: string): Promise<void> {
   try {

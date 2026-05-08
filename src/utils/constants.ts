@@ -28,11 +28,12 @@ export const DEMO_USER = {
   longitude: 98.6722,
 };
 
-// AI Chatbot config (Google Gemini)
-export const GEMINI_API_KEY = 'AIzaSyD1fU5peT72n2kBInQk3ePSmhBP43iCmGk';
+// AI Chatbot config (Groq Cloud - FREE)
+export const AI_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 
 export const AI_CONFIG = {
-  model: 'gemini-flash-latest',
+  model: 'llama-3.3-70b-versatile',
+  baseUrl: 'https://api.groq.com/openai/v1',
   maxOutputTokens: 1024,
   temperature: 0.7,
 };

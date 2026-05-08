@@ -22,7 +22,6 @@ export interface AuthResult {
  */
 export async function loginWithEmail(email: string, password: string): Promise<AuthResult> {
   if (!isFirebaseConfigured) {
-    console.log('[Auth] Firebase not configured, using demo mode');
     return { success: false, error: 'DEMO_MODE' };
   }
 
@@ -74,6 +73,8 @@ export async function registerWithEmail(
 
     return { success: true, user: result.user };
   } catch (error: any) {
+    console.error('[Auth] Registration error code:', error.code);
+    console.error('[Auth] Registration error message:', error.message);
     let errorMessage = 'Terjadi kesalahan saat mendaftar.';
 
     switch (error.code) {

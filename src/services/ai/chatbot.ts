@@ -1,8 +1,7 @@
-// DagangCerdas — AI Chatbot Service (Google Gemini Integration)
-// Menggunakan Google Gemini API untuk chatbot UMKM
+// DagangCerdas — AI Chatbot Service (Groq Cloud Integration)
+// Menggunakan Groq Cloud API (Llama 3) untuk chatbot UMKM
 // Fallback ke respons lokal jika tidak ada API key
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { User } from '../../types';
 import { AI_CONFIG, DEMO_USER } from '../../utils/constants';
 import { formatRupiah } from '../../utils/formatters';
@@ -125,31 +124,11 @@ export async function buildBusinessContext(userId?: string): Promise<string> {
 }
 
 // ==========================================
-// GEMINI API CALL
+// AI API CALL (OpenAI Compatible - Groq Cloud)
 // ==========================================
 
 /**
- * Convert conversation history from OpenAI format to Gemini format
- * OpenAI: { role: 'user'|'assistant', content: string }
- * Gemini: { role: 'user'|'model', parts: [{ text: string }] }
- */
-function toGeminiHistory(history: { role: string; content: string }[]) {
-  // Map assistant -> model
-  const formatted = history.map(msg => ({
-    role: msg.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: msg.content }],
-  }));
-
-  // History must strictly start with 'user' role for Gemini API
-  while (formatted.length > 0 && formatted[0].role !== 'user') {
-    formatted.shift();
-  }
-
-  return formatted;
-}
-
-/**
- * Send message to Google Gemini API with business context
+ * Send message to AI API (Groq) with business context
  * Returns AI response string, or empty string on failure (triggers fallback)
  */
 export async function sendToAI(
@@ -167,30 +146,40 @@ export async function sendToAI(
   try {
     const userId = currentUser?.id || DEMO_USER.id;
     const businessContext = await buildBusinessContext(userId);
-    const systemPromptWithContext = generateSystemPrompt(currentUser) + businessContext;
+    const systemPrompt = generateSystemPrompt(currentUser) + businessContext;
 
-    console.log('[AI] Initializing Gemini SDK...');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: AI_CONFIG.model,
-      systemInstruction: systemPromptWithContext,
-    });
-
-    const geminiHistory = toGeminiHistory(conversationHistory.slice(-10));
-
-    const chatSession = model.startChat({
-      history: geminiHistory,
-      generationConfig: {
-        maxOutputTokens: AI_CONFIG.maxOutputTokens,
-        temperature: AI_CONFIG.temperature,
-      },
-    });
-
-    console.log('[AI] Sending request via SDK...');
-    const result = await chatSession.sendMessage(userMessage);
-    const reply = result.response.text() || '';
+    console.log('[AI] Sending request to AI (Groq)...');
     
-    console.log('[AI] Response received, length:', reply.length);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...conversationHistory.slice(-10),
+      { role: 'user', content: userMessage }
+    ];
+
+    const response = await fetch(`${AI_CONFIG.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: AI_CONFIG.model,
+        messages: messages,
+        temperature: AI_CONFIG.temperature,
+        max_tokens: AI_CONFIG.maxOutputTokens,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[AI] Request Error Detail:', JSON.stringify(errorData));
+      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || '';
+    
+    console.log('[AI] Response received from AI, length:', reply.length);
     return reply;
   } catch (error: any) {
     console.warn('[AI] Request error:', error?.message || error);
@@ -203,14 +192,14 @@ export async function sendToAI(
 // ==========================================
 
 /**
- * Main chat function — tries Gemini first, falls back to local responses
+ * Main chat function — tries AI (Groq) first, falls back to local responses
  */
 export async function chat(
   userMessage: string,
   conversationHistory: { role: string; content: string }[] = [],
   currentUser: User | null = null
 ): Promise<{ response: string; isAI: boolean }> {
-  // Try Gemini first
+  // Try AI first
   const aiResponse = await sendToAI(userMessage, conversationHistory, currentUser);
 
   if (aiResponse) {
@@ -258,24 +247,32 @@ Contoh:
 
 Berikan insight yang relevan dengan data di atas. Fokus pada hal yang bisa langsung dilakukan.`;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: AI_CONFIG.model,
-      systemInstruction: 'Kamu adalah AI mentor bisnis UMKM di Medan. DILARANG KERAS menggunakan tanda bintang ** untuk bold atau emoji apapun.',
-    });
-    
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
+    const response = await fetch(`${AI_CONFIG.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
+      body: JSON.stringify({
+        model: AI_CONFIG.model,
+        messages: [
+          { role: 'system', content: 'Kamu adalah AI mentor bisnis UMKM di Medan. DILARANG KERAS menggunakan tanda bintang ** untuk bold atau emoji apapun.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
     });
 
-    const reply = result.response.text() || '';
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || '';
     return { insights: reply, isAI: true };
   } catch (error: any) {
-    console.warn('[AI Mentor] Generate insights error:', error?.message || error);
+    console.warn('[AI Mentor] Generate Grok insights error:', error?.message || error);
     return { insights: '', isAI: false };
   }
 }
