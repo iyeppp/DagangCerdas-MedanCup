@@ -428,9 +428,163 @@ export async function syncAll(userId: string): Promise<{ uploaded: number; downl
     };
 
     console.log(`[Sync] Sync complete — Uploaded: ${result.uploaded}, Downloaded: ${result.downloaded}`);
+    
+    // 3. Trigger Group Buying sync (non-blocking)
+    syncGroupBuying().catch(e => console.error('[Sync] Group buying sync error:', e));
+
     return result;
   } catch (error) {
     console.error('[Sync] Full sync error:', error);
     return { uploaded: 0, downloaded: 0 };
+  }
+}
+
+// ==========================================
+// GROUP BUYING SYNC (GLOBAL)
+// ==========================================
+
+/**
+ * Upload a newly created group order to Firestore
+ */
+export async function uploadGroupOrder(orderId: string): Promise<void> {
+  try {
+    const sqliteDb = await getDatabase();
+    const order = await sqliteDb.getFirstAsync<any>(
+      'SELECT * FROM group_orders WHERE id = ?',
+      [orderId]
+    );
+
+    if (!order) return;
+
+    // We store group orders at the root collection /group_orders so everyone can see them
+    const docRef = doc(firestoreDb, 'group_orders', orderId);
+    await setDoc(docRef, {
+      id: order.id,
+      initiatorId: order.initiator_id,
+      initiatorName: order.initiator_name,
+      productName: order.product_name,
+      description: order.description,
+      targetQuantity: order.target_quantity,
+      currentQuantity: order.current_quantity,
+      wholesalePrice: order.wholesale_price,
+      retailPrice: order.retail_price,
+      vendorName: order.vendor_name,
+      vendorId: order.vendor_id,
+      hubLatitude: order.hub_latitude,
+      hubLongitude: order.hub_longitude,
+      hubAddress: order.hub_address,
+      radiusKm: order.radius_km,
+      status: order.status,
+      deadline: order.deadline,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+    }, { merge: true });
+
+    console.log(`[Sync] Uploaded group order ${orderId}`);
+  } catch (error) {
+    console.error('[Sync] Upload group order error:', error);
+  }
+}
+
+/**
+ * Upload a participant's entry to an existing group order
+ */
+export async function uploadGroupOrderParticipant(participantId: string): Promise<void> {
+  try {
+    const sqliteDb = await getDatabase();
+    const participant = await sqliteDb.getFirstAsync<any>(
+      'SELECT * FROM group_order_participants WHERE id = ?',
+      [participantId]
+    );
+
+    if (!participant) return;
+
+    // Participants are stored as a subcollection under the specific group order
+    const docRef = doc(firestoreDb, `group_orders/${participant.group_order_id}/participants`, participantId);
+    await setDoc(docRef, {
+      id: participant.id,
+      groupOrderId: participant.group_order_id,
+      userId: participant.user_id,
+      userName: participant.user_name,
+      businessName: participant.business_name,
+      quantity: participant.quantity,
+      status: participant.status,
+      joinedAt: participant.joined_at,
+    }, { merge: true });
+
+    // Also update the total quantity on the parent order document
+    // (In a production app with high concurrency, use a Cloud Function or Firestore Transaction)
+    // Here we'll just re-upload the parent order from local state which has been updated
+    await uploadGroupOrder(participant.group_order_id);
+
+    console.log(`[Sync] Uploaded group order participant ${participantId}`);
+  } catch (error) {
+    console.error('[Sync] Upload participant error:', error);
+  }
+}
+
+/**
+ * Download all active group orders from Firestore
+ */
+export async function downloadActiveGroupOrders(): Promise<number> {
+  try {
+    const sqliteDb = await getDatabase();
+    
+    // We only fetch 'terbuka' orders for the MVP
+    const ordersRef = collection(firestoreDb, 'group_orders');
+    const { where } = await import('firebase/firestore');
+    const q = query(ordersRef, where('status', '==', 'terbuka'));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log('[Sync] No active group orders in Firestore');
+      return 0;
+    }
+
+    let count = 0;
+    await sqliteDb.withExclusiveTransactionAsync(async () => {
+      for (const docSnap of snapshot.docs) {
+        const data = docSnap.data();
+        
+        await sqliteDb.runAsync(
+          `INSERT INTO group_orders (
+            id, initiator_id, initiator_name, product_name, description, 
+            target_quantity, current_quantity, wholesale_price, retail_price, 
+            vendor_name, vendor_id, hub_latitude, hub_longitude, hub_address, 
+            radius_km, status, deadline, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET 
+            current_quantity = excluded.current_quantity,
+            status = excluded.status,
+            updated_at = excluded.updated_at`,
+          [
+            data.id, data.initiatorId || data.vendorId || 'system', data.initiatorName || data.vendorName || 'Vendor', data.productName, data.description,
+            data.targetQuantity, data.currentQuantity, data.wholesalePrice, data.retailPrice,
+            data.vendorName, data.vendorId, data.hubLatitude, data.hubLongitude, data.hubAddress,
+            data.radiusKm, data.status, data.deadline, data.createdAt, data.updatedAt
+          ]
+        );
+        count++;
+      }
+    });
+
+    console.log(`[Sync] Downloaded ${count} active group orders`);
+    return count;
+  } catch (error) {
+    console.error('[Sync] Download group orders error:', error);
+    return 0;
+  }
+}
+
+/**
+ * Trigger sync for group buying data (runs globally, not tied to a single user)
+ */
+export async function syncGroupBuying(): Promise<void> {
+  console.log('[Sync] Starting Group Buying sync');
+  try {
+    await downloadActiveGroupOrders();
+    console.log('[Sync] Group Buying sync complete');
+  } catch (error) {
+    console.error('[Sync] Group Buying sync error:', error);
   }
 }

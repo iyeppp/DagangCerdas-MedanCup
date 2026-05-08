@@ -41,7 +41,14 @@ export interface UMKMLocation {
   latitude: number;
   longitude: number;
   address: string;
+  phone?: string;             // Used for WhatsApp invites
   distance?: number;          // Calculated from user location
+}
+
+export interface JoinedGroupOrder extends GroupOrder {
+  myQuantity: number;
+  myStatus: ParticipantStatus;
+  myJoinedAt: number;
 }
 
 export interface Vendor {

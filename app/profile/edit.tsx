@@ -20,6 +20,8 @@ export default function EditProfileScreen() {
   const [phone, setPhone] = useState(user?.phone || '');
   const [businessType, setBusinessType] = useState<BusinessType>(user?.businessType || 'lainnya');
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [latitude, setLatitude] = useState(user?.latitude ? String(user.latitude) : '');
+  const [longitude, setLongitude] = useState(user?.longitude ? String(user.longitude) : '');
 
   const handleSave = async () => {
     if (!name.trim() || !businessName.trim() || !phone.trim()) {
@@ -27,13 +29,18 @@ export default function EditProfileScreen() {
       return;
     }
 
-    const profileUpdates = {
+    const profileUpdates: any = {
       name: name.trim(),
       businessName: businessName.trim(),
       phone: phone.trim(),
       businessType,
       updatedAt: Date.now(),
     };
+
+    if (latitude.trim() && longitude.trim()) {
+      profileUpdates.latitude = parseFloat(latitude);
+      profileUpdates.longitude = parseFloat(longitude);
+    }
 
     // 1. Update Zustand store (UI state)
     updateUser(profileUpdates);
@@ -176,6 +183,44 @@ export default function EditProfileScreen() {
               </View>
             )}
           </View>
+
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionTitle}>Lokasi Peta</Text>
+          <Text style={{ fontSize: 12, color: colors.text.tertiary, marginBottom: 16 }}>
+            Masukkan koordinat agar toko Anda muncul di Peta UMKM Sekitar.
+          </Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Latitude</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location-outline" size={20} color={colors.neutral[500]} />
+              <TextInput
+                style={styles.input}
+                value={latitude}
+                onChangeText={setLatitude}
+                placeholder="Mis: 3.5952"
+                keyboardType="numeric"
+                placeholderTextColor={colors.neutral[400]}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Longitude</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location-outline" size={20} color={colors.neutral[500]} />
+              <TextInput
+                style={styles.input}
+                value={longitude}
+                onChangeText={setLongitude}
+                placeholder="Mis: 98.6722"
+                keyboardType="numeric"
+                placeholderTextColor={colors.neutral[400]}
+              />
+            </View>
+          </View>
+
         </View>
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>

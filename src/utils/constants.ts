@@ -24,8 +24,8 @@ export const DEMO_USER = {
   businessName: 'Warung Nasi Pak Fadli',
   businessType: 'warung' as const,
   phone: '081234567890',
-  latitude: 3.5952,
-  longitude: 98.6722,
+  latitude: 3.08,
+  longitude: 9.04,
 };
 
 // AI Chatbot config (Groq Cloud - FREE)

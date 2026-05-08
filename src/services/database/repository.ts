@@ -9,7 +9,7 @@ const uuidv4 = () => {
 };
 
 import { getDatabase, initializeDatabase } from './schema';
-import type { Product, Transaction, TransactionItem, CartItem, DailySales, SalesSummary } from '../../types';
+import type { Product, Transaction, TransactionItem, CartItem, DailySales, SalesSummary, GroupOrder, GroupOrderParticipant, JoinedGroupOrder } from '../../types';
 import { uploadSingleProduct, uploadTransaction as uploadTxToFirestore } from '../firebase/firestore-sync';
 
 // ==========================================
@@ -33,7 +33,7 @@ export async function upsertUser(user: { id: string; name: string; email: string
 
 export async function updateUserProfile(
   userId: string,
-  updates: { name?: string; businessName?: string; businessType?: string; phone?: string }
+  updates: { name?: string; businessName?: string; businessType?: string; phone?: string; latitude?: number; longitude?: number; }
 ): Promise<void> {
   const db = await getDatabase();
   const now = Date.now();
@@ -44,6 +44,8 @@ export async function updateUserProfile(
   if (updates.businessName !== undefined) { setClause.push('business_name = ?'); values.push(updates.businessName); }
   if (updates.businessType !== undefined) { setClause.push('business_type = ?'); values.push(updates.businessType); }
   if (updates.phone !== undefined) { setClause.push('phone = ?'); values.push(updates.phone); }
+  if (updates.latitude !== undefined) { setClause.push('latitude = ?'); values.push(updates.latitude); }
+  if (updates.longitude !== undefined) { setClause.push('longitude = ?'); values.push(updates.longitude); }
 
   if (setClause.length === 0) return;
 
@@ -514,5 +516,186 @@ function mapRowToTransactionItem(row: any): TransactionItem {
     quantity: row.quantity,
     unitPrice: row.unit_price,
     subtotal: row.subtotal,
+  };
+}
+
+// ==========================================
+// GROUP BUYING (BELANJA KOLEKTIF)
+// ==========================================
+
+export async function createGroupOrder(order: GroupOrder): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT INTO group_orders (
+      id, initiator_id, initiator_name, product_name, description, 
+      target_quantity, current_quantity, wholesale_price, retail_price, 
+      vendor_name, vendor_id, hub_latitude, hub_longitude, hub_address, 
+      radius_km, status, deadline, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      order.id, order.initiatorId, order.initiatorName, order.productName, order.description,
+      order.targetQuantity, order.currentQuantity, order.wholesalePrice, order.retailPrice,
+      order.vendorName, order.vendorId, order.hubLatitude, order.hubLongitude, order.hubAddress,
+      order.radiusKm, order.status, order.deadline, order.createdAt, order.updatedAt
+    ]
+  );
+}
+
+export async function getActiveGroupOrders(): Promise<GroupOrder[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    'SELECT * FROM group_orders WHERE status = ? ORDER BY deadline ASC',
+    ['terbuka']
+  );
+  return rows.map(mapRowToGroupOrder);
+}
+
+export async function getGroupOrderById(id: string): Promise<GroupOrder | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<any>(
+    'SELECT * FROM group_orders WHERE id = ?',
+    [id]
+  );
+  return row ? mapRowToGroupOrder(row) : null;
+}
+export async function joinGroupOrder(participant: GroupOrderParticipant): Promise<void> {
+  const db = await getDatabase();
+  
+  await db.withExclusiveTransactionAsync(async () => {
+    // 1. Insert participant
+    await db.runAsync(
+      `INSERT INTO group_order_participants (
+        id, group_order_id, user_id, user_name, business_name, 
+        quantity, status, joined_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        participant.id, participant.groupOrderId, participant.userId, participant.userName,
+        participant.businessName, participant.quantity, participant.status, participant.joinedAt
+      ]
+    );
+
+    // 2. Update order quantity and check if target is met
+    await db.runAsync(
+      `UPDATE group_orders 
+       SET current_quantity = current_quantity + ?, 
+           status = CASE WHEN current_quantity + ? >= target_quantity THEN 'terkonfirmasi' ELSE status END,
+           updated_at = ?
+       WHERE id = ?`,
+      [participant.quantity, participant.quantity, Date.now(), participant.groupOrderId]
+    );
+  });
+}
+
+export async function updateGroupOrderParticipation(orderId: string, userId: string, newTotalQuantity: number): Promise<void> {
+  const db = await getDatabase();
+  
+  await db.withExclusiveTransactionAsync(async () => {
+    // 1. Dapatkan total kuantitas saat ini
+    const rows = await db.getAllAsync<any>(
+      'SELECT id, quantity FROM group_order_participants WHERE group_order_id = ? AND user_id = ?',
+      [orderId, userId]
+    );
+    
+    if (rows.length === 0) return;
+    
+    const currentTotal = rows.reduce((sum: number, row: any) => sum + row.quantity, 0);
+    const difference = newTotalQuantity - currentTotal;
+    
+    if (difference === 0) return;
+    
+    const firstRow = rows[0];
+    
+    // 2. Update partisipan (Konsolidasi jika ada duplikat join)
+    if (newTotalQuantity <= 0) {
+      await db.runAsync('DELETE FROM group_order_participants WHERE group_order_id = ? AND user_id = ?', [orderId, userId]);
+    } else {
+      await db.runAsync(
+        'UPDATE group_order_participants SET quantity = ? WHERE id = ?',
+        [firstRow.quantity + difference, firstRow.id]
+      );
+      for (let i = 1; i < rows.length; i++) {
+        await db.runAsync('DELETE FROM group_order_participants WHERE id = ?', [rows[i].id]);
+      }
+    }
+
+    // 3. Update current_quantity di tabel group_orders
+    await db.runAsync(
+      `UPDATE group_orders 
+       SET current_quantity = current_quantity + ?, 
+           status = CASE 
+             WHEN current_quantity + ? >= target_quantity THEN 'terkonfirmasi' 
+             WHEN current_quantity + ? < target_quantity AND status = 'terkonfirmasi' THEN 'terbuka' 
+             ELSE status 
+           END,
+           updated_at = ?
+       WHERE id = ?`,
+      [difference, difference, difference, Date.now(), orderId]
+    );
+  });
+}
+
+export async function getGroupOrderParticipants(orderId: string): Promise<GroupOrderParticipant[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    'SELECT * FROM group_order_participants WHERE group_order_id = ? ORDER BY joined_at ASC',
+    [orderId]
+  );
+  return rows.map(mapRowToGroupOrderParticipant);
+}
+
+export async function getJoinedGroupOrders(userId: string): Promise<JoinedGroupOrder[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<any>(
+    `SELECT o.*, SUM(p.quantity) as my_quantity, p.status as my_status, MAX(p.joined_at) as my_joined_at 
+     FROM group_orders o
+     INNER JOIN group_order_participants p ON o.id = p.group_order_id
+     WHERE p.user_id = ?
+     GROUP BY o.id
+     ORDER BY my_joined_at DESC`,
+    [userId]
+  );
+  
+  return rows.map(row => ({
+    ...mapRowToGroupOrder(row),
+    myQuantity: row.my_quantity,
+    myStatus: row.my_status as any,
+    myJoinedAt: row.my_joined_at
+  }));
+}
+
+function mapRowToGroupOrder(row: any): GroupOrder {
+  return {
+    id: row.id,
+    initiatorId: row.initiator_id,
+    initiatorName: row.initiator_name,
+    productName: row.product_name,
+    description: row.description,
+    targetQuantity: row.target_quantity,
+    currentQuantity: row.current_quantity,
+    wholesalePrice: row.wholesale_price,
+    retailPrice: row.retail_price,
+    vendorName: row.vendor_name,
+    vendorId: row.vendor_id,
+    hubLatitude: row.hub_latitude,
+    hubLongitude: row.hub_longitude,
+    hubAddress: row.hub_address,
+    radiusKm: row.radius_km,
+    status: row.status as any,
+    deadline: row.deadline,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapRowToGroupOrderParticipant(row: any): GroupOrderParticipant {
+  return {
+    id: row.id,
+    groupOrderId: row.group_order_id,
+    userId: row.user_id,
+    userName: row.user_name,
+    businessName: row.business_name,
+    quantity: row.quantity,
+    status: row.status as any,
+    joinedAt: row.joined_at,
   };
 }
