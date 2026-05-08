@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
@@ -186,8 +186,8 @@ export function UMKMMap({
       )}
 
       {/* Location list */}
-      <View style={styles.locationList}>
-        {[...nearbyUMKM, ...vendors].sort((a, b) => (a.distance || 99) - (b.distance || 99)).slice(0, 5).map(item => (
+      <ScrollView style={[styles.locationList, { maxHeight: 200 }]} nestedScrollEnabled={true}>
+        {[...nearbyUMKM, ...vendors].sort((a, b) => (a.distance || 99) - (b.distance || 99)).map(item => (
           <TouchableOpacity
             key={item.id}
             style={[styles.locationItem, selectedMarker?.id === item.id && styles.locationItemActive]}
@@ -203,7 +203,7 @@ export function UMKMMap({
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
