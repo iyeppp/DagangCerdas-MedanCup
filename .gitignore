@@ -43,5 +43,6 @@ app-example
 /ios
 /android
 
-# seed scripts (may contain credentials)
+# seed/inject scripts (may contain credentials)
 scripts/seed-firestore.mjs
+scripts/inject-telur.mjs

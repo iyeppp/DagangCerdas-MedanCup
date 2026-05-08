@@ -339,6 +339,14 @@ export async function uploadUserProfile(userId: string): Promise<void> {
 
     if (!user) return;
 
+    // PREVENT OVERWRITING CLOUD DATA WITH EMPTY LOCAL DATA
+    // When a user logs in on a new device, a minimal user is created with no business info.
+    // We should not upload this minimal user to Firestore, otherwise it deletes their cloud profile.
+    if (!user.business_name && !user.phone && !user.business_type) {
+      console.log('[Sync] Skipping profile upload: Local profile is minimal/empty');
+      return;
+    }
+
     const docRef = doc(firestoreDb, 'users', userId);
     await setDoc(docRef, {
       name: user.name,
@@ -429,8 +437,12 @@ export async function syncAll(userId: string): Promise<{ uploaded: number; downl
 
     console.log(`[Sync] Sync complete — Uploaded: ${result.uploaded}, Downloaded: ${result.downloaded}`);
     
-    // 3. Trigger Group Buying sync (non-blocking)
-    syncGroupBuying().catch(e => console.error('[Sync] Group buying sync error:', e));
+    // 3. Trigger Group Buying sync (blocking, so participants can be downloaded after orders)
+    await syncGroupBuying();
+
+    // 4. Download user's own participation records (Riwayat tab)
+    await downloadUserGroupParticipants(userId);
+    console.log('[Sync] Group buying + participant sync complete');
 
     return result;
   } catch (error) {
@@ -588,3 +600,67 @@ export async function syncGroupBuying(): Promise<void> {
     console.error('[Sync] Group Buying sync error:', error);
   }
 }
+
+/**
+ * Download semua data keikutsertaan (participants) user dari Firestore ke SQLite lokal.
+ * Pendekatan: iterasi setiap group order yang sudah ada di SQLite lokal,
+ * lalu query sub-koleksi participants-nya langsung (menghindari collectionGroup permission issue).
+ */
+export async function downloadUserGroupParticipants(userId: string): Promise<number> {
+  try {
+    const sqliteDb = await getDatabase();
+    const { where: fsWhere } = await import('firebase/firestore');
+
+    // Ambil semua group order IDs yang ada di SQLite lokal
+    const localOrders = await sqliteDb.getAllAsync<any>('SELECT id FROM group_orders');
+
+    if (localOrders.length === 0) {
+      console.log('[Sync] No local group orders to check for participants');
+      return 0;
+    }
+
+    let count = 0;
+
+    for (const order of localOrders) {
+      try {
+        // Query participants sub-collection dari order ini, filter by userId
+        const participantsRef = collection(firestoreDb, `group_orders/${order.id}/participants`);
+        const q = query(participantsRef, fsWhere('userId', '==', userId));
+        const snapshot = await getDocs(q);
+
+        for (const docSnap of snapshot.docs) {
+          const data = docSnap.data();
+
+          await sqliteDb.runAsync(
+            `INSERT INTO group_order_participants (id, group_order_id, user_id, user_name, business_name, quantity, status, joined_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               quantity = excluded.quantity,
+               status = excluded.status`,
+            [
+              data.id || docSnap.id,
+              data.groupOrderId || order.id,
+              data.userId,
+              data.userName || '',
+              data.businessName || '',
+              data.quantity,
+              data.status || 'bergabung',
+              data.joinedAt || Date.now(),
+            ]
+          );
+          count++;
+        }
+      } catch (orderError) {
+        // Skip individual order errors silently
+        console.log(`[Sync] Could not fetch participants for order ${order.id}`);
+      }
+    }
+
+    console.log(`[Sync] Downloaded ${count} group order participations for user`);
+    return count;
+  } catch (error) {
+    console.error('[Sync] Download user group participants error:', error);
+    return 0;
+  }
+}
+

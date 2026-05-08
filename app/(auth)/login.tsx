@@ -14,7 +14,6 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../src/th
 import { useAuthStore } from '../../src/stores/authStore';
 import { loginWithEmail, registerWithEmail } from '../../src/services/firebase/auth';
 import { isFirebaseConfigured } from '../../src/services/firebase/config';
-import { syncAll } from '../../src/services/firebase/firestore-sync';
 import { FadeInView, ScalePressable } from '../../src/components/animations';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -68,8 +67,6 @@ export default function LoginScreen() {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         } as any);
-        // Sync data dari cloud ke lokal (background)
-        syncAll(userId).catch(() => {});
         router.replace('/(tabs)');
       } else {
         Alert.alert('Gagal Daftar', result.error || 'Terjadi kesalahan');
@@ -95,8 +92,6 @@ export default function LoginScreen() {
           createdAt: Date.now(),
           updatedAt: Date.now(),
         } as any);
-        // Sync data dari cloud ke lokal (background)
-        syncAll(userId).catch(() => {});
         router.replace('/(tabs)');
       } else {
         Alert.alert('Gagal Login', result.error || 'Terjadi kesalahan');
