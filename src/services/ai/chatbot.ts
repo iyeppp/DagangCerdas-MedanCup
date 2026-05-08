@@ -9,9 +9,9 @@ import { getAllProducts, getLowStockProducts, getSalesSummary } from '../databas
 import { getApiKey } from './apiKeyStore';
 
 function generateSystemPrompt(user: User | null): string {
-  const userName = user?.name || DEMO_USER.name;
-  const businessName = user?.businessName || DEMO_USER.businessName;
-  const businessType = user?.businessType || DEMO_USER.businessType;
+  const userName = user?.name || 'Pengguna';
+  const businessName = user?.businessName || 'Toko Saya';
+  const businessType = user?.businessType || 'umkm';
   
   return `Kamu adalah "Cerdas", asisten AI bisnis untuk pelaku UMKM di Kota Medan, Indonesia.
 PENTING: DILARANG KERAS menggunakan tanda baca formatting markdown (seperti bintang ganda ** untuk bold) ataupun emoji/simbol apapun di dalam jawabanmu. Balaslah dengan kalimat teks biasa yang rapi dan bersih.

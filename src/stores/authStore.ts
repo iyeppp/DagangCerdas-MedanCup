@@ -48,12 +48,5 @@ export const useAuthStore = create<AuthStore>((set) => ({
   logout: () => {
     // Clear user data
     set({ user: null, isAuthenticated: false });
-    
-    // Clear any cached chat data or navigation state
-    // This will trigger chat screen to reset on next visit
-    if (typeof window !== 'undefined') {
-      // Clear any chat-related navigation state if needed
-      localStorage.removeItem('chat_session_id');
-    }
   },
 }));

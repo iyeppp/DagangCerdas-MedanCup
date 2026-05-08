@@ -189,30 +189,7 @@ export default function POSScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Category Filter */}
-      <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.categoryList}
->
-  {categories.map((cat) => (
-    <TouchableOpacity
-      key={cat}
-      style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
-      onPress={() => setSelectedCategory(cat)}
-    >
-      <Text 
-        numberOfLines={1}
-        ellipsizeMode="tail"
-        style={[styles.categoryChipText, selectedCategory === cat && styles.categoryChipTextActive]}
-      >
-        {cat}
-      </Text>
-    </TouchableOpacity>
-  ))}
-</ScrollView>
-
-      {/* Product Grid */}
+      {/* Product Grid with Category Filter as Header */}
       <FlatList
         data={filteredProducts}
         renderItem={renderProductItem}
@@ -221,6 +198,30 @@ export default function POSScreen() {
         contentContainerStyle={styles.productGrid}
         columnWrapperStyle={styles.productRow}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryList}
+            style={styles.categoryScrollView}
+          >
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
+                onPress={() => setSelectedCategory(cat)}
+              >
+                <Text 
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[styles.categoryChipText, selectedCategory === cat && styles.categoryChipTextActive]}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={48} color={colors.neutral[300]} />
@@ -503,12 +504,16 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#FFFFFF',
   },
+  categoryScrollView: {
+    marginBottom: spacing.sm,
+  },
 
   // Product Grid
   productGrid: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: 100,
+    flexGrow: 0,
   },
   productRow: {
     gap: spacing.sm,

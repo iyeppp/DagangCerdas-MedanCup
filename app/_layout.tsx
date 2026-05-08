@@ -8,6 +8,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { initializeDatabase } from '../src/services/database/schema';
 import { onAuthChanged } from '../src/services/firebase/auth';
+import { syncAll } from '../src/services/firebase/firestore-sync';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuthStore } from '../src/stores/authStore';
 import { upsertUser } from '../src/services/database/repository';
@@ -58,6 +59,8 @@ export default function RootLayout() {
         };
         setUser(minimalUser as any);
         upsertUser(minimalUser).catch(e => console.error('[SQLite] Failed to upsert user:', e));
+        // Auto-sync data dari Firestore ke SQLite saat app dibuka
+        syncAll(firebaseUser.uid).catch(e => console.error('[Sync] Auto-sync failed:', e));
       } else if (isAuthenticated) {
         // Clear ghost dummy state if firebase is logged out
         logout();
