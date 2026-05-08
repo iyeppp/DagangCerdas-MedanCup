@@ -31,6 +31,40 @@ export async function upsertUser(user: { id: string; name: string; email: string
   );
 }
 
+export async function updateUserProfile(
+  userId: string,
+  updates: { name?: string; businessName?: string; businessType?: string; phone?: string }
+): Promise<void> {
+  const db = await getDatabase();
+  const now = Date.now();
+  const setClause: string[] = [];
+  const values: any[] = [];
+
+  if (updates.name !== undefined) { setClause.push('name = ?'); values.push(updates.name); }
+  if (updates.businessName !== undefined) { setClause.push('business_name = ?'); values.push(updates.businessName); }
+  if (updates.businessType !== undefined) { setClause.push('business_type = ?'); values.push(updates.businessType); }
+  if (updates.phone !== undefined) { setClause.push('phone = ?'); values.push(updates.phone); }
+
+  if (setClause.length === 0) return;
+
+  setClause.push('updated_at = ?');
+  values.push(now);
+  values.push(userId);
+
+  await db.runAsync(
+    `UPDATE users SET ${setClause.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+export async function getUserProfile(userId: string): Promise<any | null> {
+  const db = await getDatabase();
+  return db.getFirstAsync<any>(
+    'SELECT * FROM users WHERE id = ?',
+    [userId]
+  );
+}
+
 // ==========================================
 // PRODUCTS
 // ==========================================

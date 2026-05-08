@@ -326,6 +326,81 @@ export async function downloadTransactions(userId: string): Promise<number> {
   }
 }
 
+/**
+ * Upload user profile data ke Firestore
+ */
+export async function uploadUserProfile(userId: string): Promise<void> {
+  try {
+    const sqliteDb = await getDatabase();
+    const user = await sqliteDb.getFirstAsync<any>(
+      'SELECT * FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (!user) return;
+
+    const docRef = doc(firestoreDb, 'users', userId);
+    await setDoc(docRef, {
+      name: user.name,
+      email: user.email,
+      businessName: user.business_name || null,
+      businessType: user.business_type || null,
+      phone: user.phone || null,
+      latitude: user.latitude || null,
+      longitude: user.longitude || null,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+    }, { merge: true });
+
+    console.log('[Sync] Uploaded user profile to Firestore');
+  } catch (error) {
+    console.error('[Sync] Upload user profile error:', error);
+  }
+}
+
+/**
+ * Download user profile dari Firestore ke SQLite
+ */
+export async function downloadUserProfile(userId: string): Promise<void> {
+  try {
+    const sqliteDb = await getDatabase();
+    const docRef = doc(firestoreDb, 'users', userId);
+    const { getDoc } = await import('firebase/firestore');
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      console.log('[Sync] No user profile in Firestore');
+      return;
+    }
+
+    const data = docSnap.data();
+
+    await sqliteDb.runAsync(
+      `UPDATE users SET 
+       business_name = COALESCE(?, business_name),
+       business_type = COALESCE(?, business_type),
+       phone = COALESCE(?, phone),
+       latitude = COALESCE(?, latitude),
+       longitude = COALESCE(?, longitude),
+       updated_at = ?
+       WHERE id = ?`,
+      [
+        data.businessName || null,
+        data.businessType || null,
+        data.phone || null,
+        data.latitude || null,
+        data.longitude || null,
+        Date.now(),
+        userId,
+      ]
+    );
+
+    console.log('[Sync] Downloaded user profile from Firestore');
+  } catch (error) {
+    console.error('[Sync] Download user profile error:', error);
+  }
+}
+
 // ==========================================
 // FULL SYNC
 // ==========================================
@@ -339,9 +414,11 @@ export async function syncAll(userId: string): Promise<{ uploaded: number; downl
 
   try {
     // 1. Upload data lokal ke Firestore terlebih dahulu
+    await uploadUserProfile(userId);
     const uploadedProducts = await uploadProducts(userId);
 
     // 2. Download data dari Firestore ke SQLite
+    await downloadUserProfile(userId);
     const downloadedProducts = await downloadProducts(userId);
     const downloadedTransactions = await downloadTransactions(userId);
 

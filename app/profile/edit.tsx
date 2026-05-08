@@ -8,6 +8,8 @@ import { useRouter } from 'expo-router';
 import { colors, typography, spacing, borderRadius, shadows } from '../../src/theme';
 import { useAuthStore } from '../../src/stores/authStore';
 import { BUSINESS_TYPE_LABELS, BusinessType } from '../../src/types/user';
+import { updateUserProfile } from '../../src/services/database/repository';
+import { uploadUserProfile } from '../../src/services/firebase/firestore-sync';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -19,19 +21,33 @@ export default function EditProfileScreen() {
   const [businessType, setBusinessType] = useState<BusinessType>(user?.businessType || 'lainnya');
   const [showTypePicker, setShowTypePicker] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !businessName.trim() || !phone.trim()) {
       Alert.alert('Error', 'Harap isi semua kolom utama');
       return;
     }
 
-    updateUser({
+    const profileUpdates = {
       name: name.trim(),
       businessName: businessName.trim(),
       phone: phone.trim(),
       businessType,
       updatedAt: Date.now(),
-    });
+    };
+
+    // 1. Update Zustand store (UI state)
+    updateUser(profileUpdates);
+
+    // 2. Save to SQLite (local persistence)
+    if (user?.id) {
+      try {
+        await updateUserProfile(user.id, profileUpdates);
+        // 3. Sync to Firestore (cloud persistence)
+        await uploadUserProfile(user.id);
+      } catch (error) {
+        console.error('[Profile] Failed to save profile:', error);
+      }
+    }
 
     Alert.alert('Berhasil', 'Profil berhasil diperbarui', [
       { text: 'OK', onPress: () => router.back() }

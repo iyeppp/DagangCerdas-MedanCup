@@ -1,7 +1,7 @@
 // DagangCerdas — Root Layout
 // Inisialisasi database, auth, dan navigation
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -11,7 +11,7 @@ import { onAuthChanged } from '../src/services/firebase/auth';
 import { syncAll } from '../src/services/firebase/firestore-sync';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { useAuthStore } from '../src/stores/authStore';
-import { upsertUser } from '../src/services/database/repository';
+import { upsertUser, getUserProfile } from '../src/services/database/repository';
 import { colors } from '../src/theme';
 
 const theme = {
@@ -48,6 +48,11 @@ export default function RootLayout() {
     initialize();
   }, []);
 
+  // Use a ref to access isAuthenticated inside the auth listener
+  // without adding it to the dependency array (which causes double-registration)
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
+
   useEffect(() => {
     const unsubscribe = onAuthChanged((firebaseUser) => {
       setFbUser(firebaseUser);
@@ -59,16 +64,37 @@ export default function RootLayout() {
         };
         setUser(minimalUser as any);
         upsertUser(minimalUser).catch(e => console.error('[SQLite] Failed to upsert user:', e));
+        
         // Auto-sync data dari Firestore ke SQLite saat app dibuka
-        syncAll(firebaseUser.uid).catch(e => console.error('[Sync] Auto-sync failed:', e));
-      } else if (isAuthenticated) {
+        syncAll(firebaseUser.uid)
+          .then(async () => {
+            // Load full profile (with businessName, phone, etc.) from SQLite after sync
+            const profile = await getUserProfile(firebaseUser.uid);
+            if (profile) {
+              setUser({
+                id: profile.id,
+                name: profile.name,
+                email: profile.email,
+                businessName: profile.business_name || undefined,
+                businessType: profile.business_type || undefined,
+                phone: profile.phone || undefined,
+                latitude: profile.latitude || undefined,
+                longitude: profile.longitude || undefined,
+                createdAt: profile.created_at,
+                updatedAt: profile.updated_at,
+                syncedAt: profile.synced_at || null,
+              } as any);
+            }
+          })
+          .catch(e => console.error('[Sync] Auto-sync failed:', e));
+      } else if (isAuthenticatedRef.current) {
         // Clear ghost dummy state if firebase is logged out
         logout();
       }
       setIsAuthReady(true);
     });
     return unsubscribe;
-  }, [isAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (!isDbReady || !isAuthReady) return;
